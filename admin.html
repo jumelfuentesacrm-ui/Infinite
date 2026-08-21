@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>INFINITE — Bandeja de solicitudes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#ffffff;--bg-2:#faf7f1;--ink:#171208;--muted:#7d7364;
+  --gold:#c8a35a;--gold-deep:#9c7a35;
+  --grad:linear-gradient(100deg,#9c7a35,#c8a35a 45%,#b8892f);
+  --line:rgba(156,122,53,.26);--line-soft:rgba(23,18,8,.11);
+  --nuevo:#2f7d5b;--proceso:#9c7a35;--cerrado:#6b6357;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Manrope',sans-serif;background:var(--bg-2);color:var(--ink);line-height:1.6}
+h1,h2,h3{font-family:'Space Grotesk',sans-serif;letter-spacing:-.02em}
+.bar{
+  position:sticky;top:0;z-index:30;background:rgba(255,255,255,.9);backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--line-soft);padding:14px clamp(16px,4vw,36px);
+  display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;
+}
+.brand{display:flex;align-items:center;gap:10px;font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:.1em}
+.brand svg{width:32px;height:20px}
+.bar-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.wrap{max-width:1100px;margin:0 auto;padding:clamp(20px,4vw,40px) clamp(16px,4vw,36px) 80px}
+.btn{
+  font-family:'Manrope',sans-serif;font-size:.74rem;font-weight:800;letter-spacing:.12em;
+  text-transform:uppercase;padding:11px 20px;border-radius:999px;border:none;cursor:pointer;
+  transition:.2s;text-decoration:none;display:inline-block;
+}
+.btn-grad{background:var(--grad);color:#fff;box-shadow:0 10px 24px -12px rgba(156,122,53,.7)}
+.btn-grad:hover{transform:translateY(-2px)}
+.btn-ghost{border:1px solid var(--line);color:var(--ink);background:#fff}
+.btn-ghost:hover{background:rgba(200,163,90,.12)}
+.btn-danger{border:1px solid rgba(180,60,40,.35);color:#a8402c;background:#fff}
+.btn-danger:hover{background:rgba(180,60,40,.08)}
+.btn-sm{padding:8px 15px;font-size:.68rem}
+
+/* login */
+.login{max-width:400px;margin:12vh auto;background:#fff;border:1px solid var(--line-soft);
+  border-radius:20px;padding:34px;box-shadow:0 30px 60px -40px rgba(23,18,8,.4)}
+.login h1{font-size:1.5rem;margin-bottom:6px}
+.login p{color:var(--muted);font-size:.9rem;margin-bottom:22px}
+label{display:block;font-size:.7rem;letter-spacing:.2em;text-transform:uppercase;font-weight:800;color:var(--muted);margin-bottom:7px}
+input,select,textarea{
+  font-family:inherit;font-size:.98rem;color:var(--ink);width:100%;
+  background:#fff;border:1px solid var(--line-soft);border-radius:11px;padding:13px 15px;
+  transition:border-color .2s,box-shadow .2s;
+}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px rgba(200,163,90,.22)}
+textarea{min-height:90px;resize:vertical}
+.stack{display:grid;gap:16px}
+
+/* stats */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px}
+.stat{background:#fff;border:1px solid var(--line-soft);border-radius:16px;padding:18px}
+.stat b{display:block;font-family:'Space Grotesk',sans-serif;font-size:1.9rem;line-height:1}
+.stat span{font-size:.66rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);font-weight:800}
+
+/* filtros */
+.filters{display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap}
+.filters input{flex:1;min-width:200px}
+.chip{
+  border:1px solid var(--line);background:#fff;border-radius:999px;padding:10px 16px;
+  font-size:.7rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;color:var(--muted);
+}
+.chip.on{background:var(--grad);color:#fff;border-color:transparent}
+
+/* lead cards */
+.lead{background:#fff;border:1px solid var(--line-soft);border-radius:18px;margin-bottom:14px;overflow:hidden;transition:border-color .2s,box-shadow .2s}
+.lead:hover{border-color:var(--line);box-shadow:0 20px 40px -34px rgba(23,18,8,.5)}
+.lead-head{display:grid;grid-template-columns:1fr auto;gap:14px;align-items:start;padding:20px 22px;cursor:pointer}
+.lead-head h3{font-size:1.12rem;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.lead-sub{font-size:.86rem;color:var(--muted);margin-top:3px}
+.lead-sub b{color:var(--ink);font-weight:700}
+.badge{font-size:.62rem;letter-spacing:.16em;text-transform:uppercase;font-weight:800;padding:5px 11px;border-radius:999px;white-space:nowrap}
+.b-nuevo{background:rgba(47,125,91,.12);color:var(--nuevo)}
+.b-proceso{background:rgba(156,122,53,.15);color:var(--gold-deep)}
+.b-cerrado{background:rgba(107,99,87,.12);color:var(--cerrado)}
+.when{font-size:.72rem;color:var(--muted);text-align:right;white-space:nowrap}
+.lead-body{display:none;padding:0 22px 22px;border-top:1px solid var(--line-soft)}
+.lead.open .lead-body{display:block}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:18px}
+.msg{background:var(--bg-2);border:1px solid var(--line-soft);border-radius:12px;padding:14px;font-size:.92rem;white-space:pre-wrap;margin-top:14px}
+.row-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px;align-items:center}
+.saved{font-size:.72rem;color:var(--nuevo);font-weight:800;letter-spacing:.1em;text-transform:uppercase;opacity:0;transition:opacity .3s}
+.saved.on{opacity:1}
+.empty{text-align:center;padding:70px 20px;color:var(--muted)}
+.empty h3{font-size:1.3rem;margin-bottom:8px;color:var(--ink)}
+.demo-note{
+  background:rgba(200,163,90,.13);border:1px solid var(--line);border-radius:14px;
+  padding:14px 18px;font-size:.88rem;margin-bottom:22px;
+}
+.demo-note b{font-family:'Space Grotesk',sans-serif}
+.err{color:#a8402c;font-size:.85rem;font-weight:700;display:none}
+.err.on{display:block}
+@media(max-width:760px){
+  .stats{grid-template-columns:1fr 1fr}
+  .grid2{grid-template-columns:1fr}
+  .lead-head{grid-template-columns:1fr}
+  .when{text-align:left}
+}
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <span class="brand">
+    <svg viewBox="0 0 68 40" aria-hidden="true">
+      <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0" stop-color="#9c7a35"/><stop offset="1" stop-color="#c8a35a"/>
+      </linearGradient></defs>
+      <path d="M17 20c0-6 4.5-10 10-10 8 0 14 20 22 20 5.5 0 10-4 10-10s-4.5-10-10-10c-8 0-14 20-22 20-5.5 0-10-4-10-10z" transform="translate(-8 0)" fill="none" stroke="url(#g)" stroke-width="3"/>
+    </svg>
+    INFINITE · Admin
+  </span>
+  <div class="bar-actions" id="barActions" style="display:none">
+    <button class="btn btn-ghost btn-sm" id="refreshBtn">Actualizar</button>
+    <button class="btn btn-ghost btn-sm" id="csvBtn">Exportar CSV</button>
+    <button class="btn btn-ghost btn-sm" id="logoutBtn">Salir</button>
+  </div>
+</div>
+
+<!-- LOGIN -->
+<div class="login" id="loginBox">
+  <h1>Bandeja de solicitudes</h1>
+  <p id="loginLede">Entra con tu cuenta de administrador.</p>
+  <div class="stack">
+    <div>
+      <label for="u">Email</label>
+      <input type="email" id="u" autocomplete="username">
+    </div>
+    <div>
+      <label for="p">Contraseña</label>
+      <input type="password" id="p" autocomplete="current-password">
+    </div>
+    <p class="err" id="loginErr">Email o contraseña incorrectos.</p>
+    <button class="btn btn-grad" id="loginBtn">Entrar</button>
+    <button class="btn btn-ghost" id="setupToggle">Configurar Supabase</button>
+  </div>
+
+  <div id="setupBox" style="display:none;margin-top:22px;border-top:1px solid var(--line-soft);padding-top:22px">
+    <h3 style="font-size:1.05rem;margin-bottom:6px">Conectar la base de datos</h3>
+    <p style="color:var(--muted);font-size:.85rem;margin-bottom:16px">
+      Supabase → Settings → API. Copia y pega aquí; no hace falta editar archivos.
+    </p>
+    <div class="stack">
+      <div>
+        <label for="sUrl">Project URL</label>
+        <input type="url" id="sUrl" placeholder="https://xxxxx.supabase.co">
+      </div>
+      <div>
+        <label for="sKey">anon public key</label>
+        <input type="text" id="sKey" placeholder="eyJhbGciOi...">
+      </div>
+      <p class="err" id="setupErr"></p>
+      <button class="btn btn-grad" id="saveCfg">Guardar y conectar</button>
+      <button class="btn btn-ghost" id="copyCfg">Copiar texto de config.js</button>
+      <p style="color:var(--muted);font-size:.8rem">
+        Esto conecta el panel en este teléfono. Para que el formulario público
+        también guarde, pega ese texto en el archivo <b>config.js</b> de tu sitio.
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- PANEL -->
+<div class="wrap" id="panel" style="display:none">
+  <div class="demo-note" id="demoNote" style="display:none">
+    <b>Modo demostración.</b> Estás viendo datos de ejemplo porque Supabase no está configurado todavía.
+    Pon tus llaves en <b>config.js</b> y esta bandeja mostrará las solicitudes reales.
+  </div>
+
+  <div class="stats">
+    <div class="stat"><b id="sTotal">0</b><span>Total</span></div>
+    <div class="stat"><b id="sNuevo" style="color:var(--nuevo)">0</b><span>Nuevos</span></div>
+    <div class="stat"><b id="sProceso" style="color:var(--gold-deep)">0</b><span>En proceso</span></div>
+    <div class="stat"><b id="sCerrado" style="color:var(--cerrado)">0</b><span>Cerrados</span></div>
+  </div>
+
+  <div class="filters">
+    <input type="search" id="q" placeholder="Buscar por nombre, negocio, email o servicio…">
+    <button class="chip on" data-f="todos">Todos</button>
+    <button class="chip" data-f="nuevo">Nuevos</button>
+    <button class="chip" data-f="proceso">En proceso</button>
+    <button class="chip" data-f="cerrado">Cerrados</button>
+  </div>
+
+  <div id="list"></div>
+</div>
+
+<script src="config.js"></script>
+<script type="module">
+/* ---------- configuración: archivo o guardada en el teléfono ---------- */
+function readStored(){
+  try{return JSON.parse(localStorage.getItem('infinite_cfg')||'null');}catch(e){return null;}
+}
+function storeCfg(o){
+  try{localStorage.setItem('infinite_cfg',JSON.stringify(o));}catch(e){}
+}
+const FILE_CFG=window.INFINITE_CONFIG||{};
+const STORED=readStored()||{};
+let URL_=((FILE_CFG.SUPABASE_URL||STORED.url||'')).replace(/\/$/,'');
+let KEY=FILE_CFG.SUPABASE_ANON_KEY||STORED.key||'';
+let LIVE=!!(URL_&&KEY);
+
+let sb=null;
+async function connect(){
+  if(!LIVE)return null;
+  if(sb)return sb;
+  const {createClient}=await import('https://esm.sh/@supabase/supabase-js@2');
+  sb=createClient(URL_,KEY);
+  return sb;
+}
+await connect();
+
+/* ---------- panel de configuración ---------- */
+const setupBox=document.getElementById('setupBox');
+document.getElementById('setupToggle').addEventListener('click',()=>{
+  const open=setupBox.style.display==='none';
+  setupBox.style.display=open?'block':'none';
+  if(open){
+    document.getElementById('sUrl').value=URL_;
+    document.getElementById('sKey').value=KEY;
+  }
+});
+document.getElementById('saveCfg').addEventListener('click',async()=>{
+  const url=document.getElementById('sUrl').value.trim().replace(/\/$/,'');
+  const key=document.getElementById('sKey').value.trim();
+  const errEl=document.getElementById('setupErr');
+  errEl.classList.remove('on');
+  if(!url.startsWith('http')||key.length<20){
+    errEl.textContent='Revisa la URL y la llave.';errEl.classList.add('on');return;
+  }
+  try{
+    const r=await fetch(`${url}/rest/v1/`,{headers:{apikey:key}});
+    if(!r.ok&&r.status!==404)throw new Error('No responde');
+  }catch(e){
+    errEl.textContent='No se pudo conectar. Revisa los datos.';errEl.classList.add('on');return;
+  }
+  storeCfg({url,key});
+  URL_=url;KEY=key;LIVE=true;sb=null;
+  await connect();
+  errEl.textContent='';
+  document.getElementById('loginLede').textContent='Conectado. Entra con tu usuario de Supabase.';
+  setupBox.style.display='none';
+});
+document.getElementById('copyCfg').addEventListener('click',async()=>{
+  const url=document.getElementById('sUrl').value.trim().replace(/\/$/,'');
+  const key=document.getElementById('sKey').value.trim();
+  const txt=`window.INFINITE_CONFIG = {
+  SUPABASE_URL:      '${url}',
+  SUPABASE_ANON_KEY: '${key}',
+  WHATSAPP:      '17873562397',
+  CONTACT_EMAIL: '${(FILE_CFG.CONTACT_EMAIL||'hello@infinite.studio')}'
+};`;
+  try{
+    await navigator.clipboard.writeText(txt);
+    document.getElementById('copyCfg').textContent='Copiado ✓';
+    setTimeout(()=>document.getElementById('copyCfg').textContent='Copiar texto de config.js',2000);
+  }catch(e){
+    prompt('Copia este texto y pégalo en config.js:',txt);
+  }
+});
+
+/* ---------- datos de demostración (sin Supabase) ---------- */
+let demo=[
+  {id:'d1',created_at:new Date(Date.now()-36e5).toISOString(),nombre:'María Rivera',negocio:'Sola Boutique',email:'maria@solaboutique.com',telefono:'787-555-0110',servicio:'Creation Mode ON — Social Media Management',mensaje:'Queremos subir el engagement en IG antes de la temporada navideña.',estado:'nuevo',notas:''},
+  {id:'d2',created_at:new Date(Date.now()-26e5*24).toISOString(),nombre:'Carlos Vega',negocio:'VVhealth',email:'carlos@vvhealth.com',telefono:'787-555-0134',servicio:'Specialty Served — Campañas Publicitarias y Comerciales',mensaje:'Lanzamiento de clínica nueva en enero. Necesitamos campaña completa.',estado:'proceso',notas:'Llamada hecha 8/19. Enviar propuesta el viernes.'},
+  {id:'d3',created_at:new Date(Date.now()-26e5*60).toISOString(),nombre:'Ana Colón',negocio:'Café Luna',email:'ana@cafeluna.pr',telefono:'',servicio:"Let's Talk With a Plan — Consultoría digital",mensaje:'Negocio pequeño, quiero entender por dónde empezar.',estado:'cerrado',notas:'Contratada consultoría mensual.'}
+];
+
+/* ---------- capa de datos ---------- */
+const DB={
+  async list(){
+    if(!LIVE)return [...demo].sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
+    const {data,error}=await sb.from('leads').select('*').order('created_at',{ascending:false});
+    if(error)throw error;
+    return data;
+  },
+  async update(id,patch){
+    if(!LIVE){demo=demo.map(d=>d.id===id?{...d,...patch}:d);return;}
+    const {error}=await sb.from('leads').update(patch).eq('id',id);
+    if(error)throw error;
+  },
+  async remove(id){
+    if(!LIVE){demo=demo.filter(d=>d.id!==id);return;}
+    const {error}=await sb.from('leads').delete().eq('id',id);
+    if(error)throw error;
+  }
+};
+
+/* ---------- login ---------- */
+const loginBox=document.getElementById('loginBox');
+const panel=document.getElementById('panel');
+const barActions=document.getElementById('barActions');
+const loginErr=document.getElementById('loginErr');
+
+async function enter(){
+  loginBox.style.display='none';
+  panel.style.display='block';
+  barActions.style.display='flex';
+  document.getElementById('demoNote').style.display=LIVE?'none':'block';
+  await load();
+}
+
+document.getElementById('loginBtn').addEventListener('click',async()=>{
+  const email=document.getElementById('u').value.trim();
+  const pass=document.getElementById('p').value;
+  loginErr.classList.remove('on');
+  if(!LIVE){
+    if(!email){loginErr.textContent='Escribe cualquier email para ver la demostración.';loginErr.classList.add('on');return;}
+    return enter();
+  }
+  const {error}=await sb.auth.signInWithPassword({email,password:pass});
+  if(error){loginErr.textContent='Email o contraseña incorrectos.';loginErr.classList.add('on');return;}
+  enter();
+});
+document.getElementById('p').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('loginBtn').click();});
+
+document.getElementById('logoutBtn').addEventListener('click',async()=>{
+  if(LIVE)await sb.auth.signOut();
+  location.reload();
+});
+
+/* sesión ya activa */
+if(LIVE){
+  const {data}=await sb.auth.getSession();
+  if(data.session)enter();
+}
+
+/* ---------- render ---------- */
+let leads=[],filter='todos',query='';
+
+const fmt=iso=>{
+  const d=new Date(iso);
+  return d.toLocaleDateString('es-PR',{day:'2-digit',month:'short'})+' · '+
+         d.toLocaleTimeString('es-PR',{hour:'2-digit',minute:'2-digit'});
+};
+const esc=s=>(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const label={nuevo:'Nuevo',proceso:'En proceso',cerrado:'Cerrado'};
+const color={nuevo:'var(--nuevo)',proceso:'var(--gold-deep)',cerrado:'var(--cerrado)'};
+
+async function load(){
+  try{
+    leads=await DB.list();
+    render();
+  }catch(e){
+    document.getElementById('list').innerHTML=
+      `<div class="empty"><h3>No se pudo cargar</h3><p>${esc(e.message||'Revisa la configuración en config.js')}</p></div>`;
+  }
+}
+
+function render(){
+  const t={total:leads.length,nuevo:0,proceso:0,cerrado:0};
+  leads.forEach(l=>t[l.estado||'nuevo']++);
+  sTotal.textContent=t.total;sNuevo.textContent=t.nuevo;
+  sProceso.textContent=t.proceso;sCerrado.textContent=t.cerrado;
+
+  const q=query.toLowerCase();
+  const rows=leads.filter(l=>{
+    const st=l.estado||'nuevo';
+    if(filter!=='todos'&&st!==filter)return false;
+    if(!q)return true;
+    return [l.nombre,l.negocio,l.email,l.servicio,l.telefono,l.mensaje]
+      .some(v=>(v||'').toLowerCase().includes(q));
+  });
+
+  const list=document.getElementById('list');
+  if(!rows.length){
+    list.innerHTML=`<div class="empty"><h3>Nada por aquí</h3><p>No hay solicitudes que coincidan.</p></div>`;
+    return;
+  }
+
+  list.innerHTML=rows.map(l=>{
+    const st=l.estado||'nuevo';
+    return `
+    <article class="lead" data-id="${l.id}">
+      <div class="lead-head">
+        <div>
+          <h3>
+            <span class="dot" style="background:${color[st]}"></span>
+            ${esc(l.nombre)}
+            <span class="badge b-${st}">${label[st]}</span>
+          </h3>
+          <p class="lead-sub"><b>${esc(l.negocio||'Sin negocio')}</b> · ${esc(l.servicio||'—')}</p>
+        </div>
+        <span class="when">${fmt(l.created_at)}</span>
+      </div>
+      <div class="lead-body">
+        <div class="grid2">
+          <div><label>Email</label><input data-f="email" value="${esc(l.email)}"></div>
+          <div><label>Teléfono</label><input data-f="telefono" value="${esc(l.telefono)}"></div>
+          <div><label>Nombre</label><input data-f="nombre" value="${esc(l.nombre)}"></div>
+          <div><label>Negocio</label><input data-f="negocio" value="${esc(l.negocio)}"></div>
+          <div><label>Servicio</label><input data-f="servicio" value="${esc(l.servicio)}"></div>
+          <div><label>Estado</label>
+            <select data-f="estado">
+              <option value="nuevo" ${st==='nuevo'?'selected':''}>Nuevo</option>
+              <option value="proceso" ${st==='proceso'?'selected':''}>En proceso</option>
+              <option value="cerrado" ${st==='cerrado'?'selected':''}>Cerrado</option>
+            </select>
+          </div>
+        </div>
+        <div style="margin-top:16px"><label>Mensaje del cliente</label>
+          <div class="msg">${esc(l.mensaje)||'—'}</div>
+        </div>
+        <div style="margin-top:16px"><label>Notas internas</label>
+          <textarea data-f="notas" placeholder="Llamada hecha, propuesta enviada, seguimiento…">${esc(l.notas)}</textarea>
+        </div>
+        <div class="row-actions">
+          <button class="btn btn-grad btn-sm act-save">Guardar</button>
+          ${l.telefono?`<a class="btn btn-ghost btn-sm" target="_blank" rel="noopener" href="https://wa.me/${(l.telefono||'').replace(/\\D/g,'')}">WhatsApp</a>`:''}
+          <a class="btn btn-ghost btn-sm" href="mailto:${esc(l.email)}">Responder</a>
+          <button class="btn btn-danger btn-sm act-del">Borrar</button>
+          <span class="saved">Guardado ✓</span>
+        </div>
+      </div>
+    </article>`;
+  }).join('');
+}
+
+/* ---------- interacción ---------- */
+document.getElementById('list').addEventListener('click',async e=>{
+  const card=e.target.closest('.lead');
+  if(!card)return;
+  const id=card.dataset.id;
+
+  if(e.target.closest('.lead-head')){card.classList.toggle('open');return;}
+
+  if(e.target.classList.contains('act-save')){
+    const patch={};
+    card.querySelectorAll('[data-f]').forEach(el=>patch[el.dataset.f]=el.value);
+    e.target.disabled=true;e.target.textContent='Guardando…';
+    try{
+      await DB.update(id,patch);
+      const tag=card.querySelector('.saved');
+      tag.classList.add('on');setTimeout(()=>tag.classList.remove('on'),1800);
+      const i=leads.findIndex(l=>l.id===id);
+      if(i>-1)leads[i]={...leads[i],...patch};
+      const st=patch.estado||'nuevo';
+      card.querySelector('.badge').className='badge b-'+st;
+      card.querySelector('.badge').textContent=label[st];
+      card.querySelector('.dot').style.background=color[st];
+      render_stats_only();
+    }catch(err){alert('No se pudo guardar: '+(err.message||err));}
+    e.target.disabled=false;e.target.textContent='Guardar';
+    return;
+  }
+
+  if(e.target.classList.contains('act-del')){
+    if(!confirm('¿Borrar esta solicitud? No se puede deshacer.'))return;
+    try{
+      await DB.remove(id);
+      leads=leads.filter(l=>l.id!==id);
+      render();
+    }catch(err){alert('No se pudo borrar: '+(err.message||err));}
+  }
+});
+
+function render_stats_only(){
+  const t={total:leads.length,nuevo:0,proceso:0,cerrado:0};
+  leads.forEach(l=>t[l.estado||'nuevo']++);
+  sTotal.textContent=t.total;sNuevo.textContent=t.nuevo;
+  sProceso.textContent=t.proceso;sCerrado.textContent=t.cerrado;
+}
+
+document.getElementById('q').addEventListener('input',e=>{query=e.target.value;render();});
+document.querySelectorAll('.chip').forEach(c=>c.addEventListener('click',()=>{
+  document.querySelectorAll('.chip').forEach(x=>x.classList.remove('on'));
+  c.classList.add('on');filter=c.dataset.f;render();
+}));
+document.getElementById('refreshBtn').addEventListener('click',load);
+
+document.getElementById('csvBtn').addEventListener('click',()=>{
+  const cols=['created_at','nombre','negocio','email','telefono','servicio','estado','mensaje','notas'];
+  const csv=[cols.join(',')].concat(
+    leads.map(l=>cols.map(c=>`"${String(l[c]??'').replace(/"/g,'""')}"`).join(','))
+  ).join('\n');
+  const a=document.createElement('a');
+  a.href=window.URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+  a.download=`infinite-solicitudes-${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+});
+</script>
+</body>
+</html>
