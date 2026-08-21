@@ -1,19 +1,6 @@
-/* =========================================================
-   INFINITE — configuración
-   Edita SOLO este archivo. Nada más hay que tocar.
-   ========================================================= */
 window.INFINITE_CONFIG = {
-
-  /* --- Supabase (donde se guardan las solicitudes) ---------
-     1. Entra a supabase.com y crea un proyecto (gratis)
-     2. Settings > API  →  copia "Project URL" y "anon public"
-     3. Pégalas aquí abajo
-     Mientras estén vacías, el formulario abre tu correo
-     y el panel de admin funciona en modo demostración.      */
-  SUPABASE_URL:      '',
-  SUPABASE_ANON_KEY: '',
-
-  /* --- Tus contactos ------------------------------------- */
-  WHATSAPP:      '17873562397',          // (787) 356-2397
-  CONTACT_EMAIL: 'hello@infinite.studio' // cámbialo por tu correo real
+  SUPABASE_URL:      'https://xzxxeqxcjpwhwxyqscbr.supabase.co',
+  SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh6eHhlcXhjanB3aHd4eXFzY2JyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcyOTU0MzEsImV4cCI6MjEwMjg3MTQzMX0.EQAR_OaU2yQSRItZzAiBrrNqyBVNyt_4QnaPGDzNIMA',
+  WHATSAPP:      '17873562397',
+  CONTACT_EMAIL: 'hello@infinite.studio'
 };
