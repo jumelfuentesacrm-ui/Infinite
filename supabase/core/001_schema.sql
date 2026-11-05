@@ -14,7 +14,7 @@ create extension if not exists btree_gist with schema extensions;
 grant usage on schema public to anon, authenticated, service_role;
 alter default privileges in schema public grant select, insert, update, delete on tables to authenticated, service_role;
 alter default privileges in schema public grant usage, select on sequences to authenticated, service_role;
-alter default privileges in schema public grant execute on functions to anon, authenticated, service_role;
+alter default privileges in schema public grant execute on functions to authenticated, service_role;
 
 -- Esquema privado: funciones internas no expuestas por la API REST.
 create schema if not exists app;
