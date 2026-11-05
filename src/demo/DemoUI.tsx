@@ -4,9 +4,9 @@ import { RotateCcw } from 'lucide-react';
 import { resetDemo } from './backend';
 
 export const DEMO_USERS = [
-  { code: 'ADMIN', pin: '4826', name: 'Marisol Rivera', role: 'Administradora' },
+  { code: 'ADMIN', pin: '4826', name: 'Marisol Rivera', role: 'Admin' },
   { code: 'SUP1', pin: '8264', name: 'Javier Ortiz', role: 'Supervisor' },
-  { code: 'CH01', pin: '7391', name: 'Carlos Méndez', role: 'Chofer' },
+  { code: 'CH01', pin: '7391', name: 'Carlos Méndez', role: 'ATV/UTV' },
   { code: 'MEC1', pin: '5519', name: 'Mario Santiago', role: 'Mecánico' },
 ];
 

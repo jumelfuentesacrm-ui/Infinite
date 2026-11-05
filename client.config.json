@@ -21,5 +21,10 @@
     "reports": true,
     "timeclock": false,
     "workorders": true
+  },
+  "dashboard": {
+    "widgets": [
+      "fleet-donut"
+    ]
   }
 }

@@ -21,6 +21,16 @@ begin
   end loop;
 end $$;
 
+-- Funciones públicas a propósito (comentario '@public'): p. ej. el reporte de taller sin PIN.
+do $$
+declare r record;
+begin
+  for r in select p.oid::regprocedure as fn from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+            where n.nspname = 'public' and obj_description(p.oid, 'pg_proc') like '@public%' loop
+    execute format('grant execute on function %s to anon', r.fn);
+  end loop;
+end $$;
+
 do $$
 declare r record;
 begin

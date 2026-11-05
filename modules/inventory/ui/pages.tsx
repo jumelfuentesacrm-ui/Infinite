@@ -4,13 +4,14 @@ import { ArrowDownToLine, ArrowUpFromLine, Boxes, ClipboardCheck, PackagePlus, P
 import { supabase } from '@core/data/supabase';
 import { rpc, run, useAction, useData } from '@core/data/api';
 import { useModels, modelLabel } from '@core/data/shared';
-import { Can, useAuth } from '@core/auth/AuthProvider';
+import { Can, useAuth, useWho } from '@core/auth/AuthProvider';
+import { savedMsg, useSaveOrRequest } from '@core/data/changes';
 import { fmtDateTime, fmtMoney, fmtNum } from '@core/lib/format';
 import { Badge, Button, Card, EmptyState, KeyValue, LinkButton, PageHeader, QueryView, Section, Segmented, StatCard, StatusBadge, Tabs, cx } from '@core/ui/primitives';
 import { CheckList, Field, FormGrid, Input, Select, Textarea } from '@core/ui/form';
 import { DataTable, type Column } from '@core/ui/DataTable';
 import { Modal } from '@core/ui/Modal';
-import { available, keys, MOVE, PR_STATUS, stockTone, useItems, useSuppliers, type Item } from './data';
+import { available, keys, MOVE, PR_STATUS, stockTone, useCanSeeCosts, useItem, useItems, useMovements, useSuppliers, type Item } from './data';
 
 const itemColumns: Column<Item>[] = [
   { key: 'name', header: 'Pieza', mobile: 'title', render: (i) => <span className="font-medium">{i.name}</span> },
@@ -30,6 +31,7 @@ export function InventoryPage() {
   const [filter, setFilter] = useState<'all' | 'low' | 'out'>('all');
   const [creating, setCreating] = useState(false);
   const rows = (q.data ?? []).filter((i) => filter === 'all' || (filter === 'out' ? Number(i.quantity_on_hand) <= 0 : stockTone(i) !== 'ok'));
+  const canCosts = useCanSeeCosts();
   const value = (q.data ?? []).reduce((s, i) => s + Number(i.quantity_on_hand) * Number(i.unit_cost ?? 0), 0);
   return (
     <>
@@ -38,11 +40,11 @@ export function InventoryPage() {
         <LinkButton to="/inventario/proveedores" icon={Truck}>Proveedores</LinkButton>
         <Can perm="inventory.create"><Button variant="primary" icon={Plus} onClick={() => setCreating(true)}>Nueva pieza</Button></Can>
       </>} />
-      <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+      <div className={cx('mb-4 grid grid-cols-2 gap-3', canCosts ? 'md:grid-cols-4' : 'md:grid-cols-3')}>
         <StatCard label="Artículos" value={q.data?.length ?? '—'} icon={Boxes} />
         <StatCard label="Inventario bajo" value={(q.data ?? []).filter((i) => stockTone(i) === 'warn').length} tone="warn" />
         <StatCard label="Agotados" value={(q.data ?? []).filter((i) => stockTone(i) === 'bad').length} tone="bad" />
-        <StatCard label="Valor en existencia" value={fmtMoney(value)} />
+        {canCosts && <StatCard label="Valor en existencia" value={fmtMoney(value)} />}
       </div>
       <DataTable rows={rows} loading={q.isLoading} error={q.error} columns={itemColumns} onRowClick={(i) => nav(`/inventario/${i.id}`)} exportName="Inventario"
         toolbar={<Segmented value={filter} onChange={setFilter} options={[{ id: 'all', label: 'Todas' }, { id: 'low', label: 'Bajo mínimo' }, { id: 'out', label: 'Agotadas' }]} />}
@@ -57,6 +59,8 @@ export function ItemForm({ item, onClose, prefill }: { item?: Item; onClose: () 
   const models = useModels();
   const suppliers = useSuppliers();
   const base = item ?? prefill;
+  const canCosts = useCanSeeCosts();
+  const { save: saveOrRequest, isAdmin } = useSaveOrRequest();
   const [v, setV] = useState({
     sku: base?.sku ?? '', name: base?.name ?? '', part_number: base?.part_number ?? '', manufacturer: base?.manufacturer ?? '', category: base?.category ?? '',
     description: base?.description ?? '', unit: base?.unit ?? 'unidad', min_quantity: String(base?.min_quantity ?? 0), location: base?.location ?? '',
@@ -67,14 +71,15 @@ export function ItemForm({ item, onClose, prefill }: { item?: Item; onClose: () 
     if (!v.sku.trim() || !v.name.trim()) throw new Error('Código interno y nombre son requeridos');
     const data = { sku: v.sku.trim().toUpperCase(), name: v.name.trim(), part_number: v.part_number || null, manufacturer: v.manufacturer || null, category: v.category || null,
       description: v.description || null, unit: v.unit || 'unidad', min_quantity: Number(v.min_quantity) || 0, location: v.location || null,
-      supplier_id: v.supplier_id || null, unit_cost: v.unit_cost === '' ? null : Number(v.unit_cost), notes: v.notes || null };
+      supplier_id: v.supplier_id || null, notes: v.notes || null } as Record<string, unknown>;
+    if (canCosts) data.unit_cost = v.unit_cost === '' ? null : Number(v.unit_cost);
     if (item) {
-      await run(supabase.from('inventory_items').update(data).eq('id', item.id));
-      await rpc('inventory_set_models', { p_item: item.id, p_models: v.model_ids });
-      return item.id;
+      const r = await saveOrRequest('inventory_items', item.id, data, item as unknown as Record<string, unknown>);
+      if (isAdmin) await rpc('inventory_set_models', { p_item: item.id, p_models: v.model_ids });
+      return r;
     }
     return rpc<string>('inventory_create_item', { p: { ...data, initial_quantity: Number(v.initial_quantity) || 0, model_ids: v.model_ids } });
-  }, { invalidate: [keys.all], success: 'Pieza guardada', onSuccess: (id) => { onClose(); if (!item) nav(`/inventario/${id}`); } });
+  }, { invalidate: [keys.all], success: savedMsg('Pieza guardada'), onSuccess: (id) => { onClose(); if (!item) nav(`/inventario/${id}`); } });
   const set = (k: keyof typeof v) => ({ value: v[k] as string, onChange: (e: { target: { value: string } }) => setV({ ...v, [k]: e.target.value }) });
   return (
     <Modal open onClose={onClose} title={item ? 'Editar pieza' : 'Nueva pieza'} size="lg"
@@ -90,10 +95,11 @@ export function ItemForm({ item, onClose, prefill }: { item?: Item; onClose: () 
           <Field label="Unidad"><Input {...set('unit')} /></Field>
           <Field label="Cantidad mínima"><Input type="number" min="0" {...set('min_quantity')} /></Field>
           <Field label="Proveedor"><Select {...set('supplier_id')} placeholder="—" options={(suppliers.data ?? []).map((s) => ({ value: s.id, label: s.name }))} /></Field>
-          <Field label="Precio de compra (c/u)"><Input type="number" step="0.01" {...set('unit_cost')} /></Field>
+          {canCosts && <Field label="Precio de compra (c/u)"><Input type="number" step="0.01" {...set('unit_cost')} /></Field>}
           {!item && <Field label="Existencia inicial" hint="Queda registrada como movimiento"><Input type="number" min="0" {...set('initial_quantity')} /></Field>}
         </FormGrid>
-        <Field label="Compatible con"><CheckList value={v.model_ids} onChange={(ids) => setV({ ...v, model_ids: ids })} height={140} options={(models.data ?? []).map((m) => ({ value: m.id, label: modelLabel(m) }))} /></Field>
+        {item && !isAdmin && <p className="rounded-md bg-info-soft px-3 py-2 text-[13px] text-info">Los cambios a una pieza ya guardada se envían al administrador para aprobación.</p>}
+        <Field label="Compatible con" hint={item && !isAdmin ? 'Solo el administrador cambia la compatibilidad' : undefined}><CheckList value={v.model_ids} onChange={(ids) => setV({ ...v, model_ids: ids })} height={140} options={(models.data ?? []).map((m) => ({ value: m.id, label: modelLabel(m) }))} /></Field>
         <Field label="Descripción"><Textarea rows={2} {...set('description')} /></Field>
         <Field label="Observaciones"><Textarea rows={2} {...set('notes')} /></Field>
       </div>
@@ -104,9 +110,11 @@ export function ItemForm({ item, onClose, prefill }: { item?: Item; onClose: () 
 export function ItemDetail() {
   const { id = '' } = useParams();
   const { can } = useAuth();
+  const who = useWho();
+  const canCosts = useCanSeeCosts();
   const models = useModels();
-  const q = useData([...keys.all, 'item', id], () => run(supabase.from('inventory_items').select('*, suppliers(name), inventory_item_models(model_id)').eq('id', id).single()) as Promise<Item>);
-  const moves = useData([...keys.all, 'moves', id], () => run(supabase.from('inventory_movements').select('*, employees(full_name), suppliers(name)').eq('item_id', id).order('performed_at', { ascending: false }).limit(500)) as Promise<any[]>);
+  const q = useItem(id);
+  const moves = useMovements(id);
   const res = useData([...keys.all, 'res', id], () => run(supabase.from('inventory_reservations').select('*').eq('item_id', id).eq('status', 'active')) as Promise<any[]>);
   const [modal, setModal] = useState<null | 'edit' | 'receive' | 'issue' | 'count' | 'request'>(null);
   return (
@@ -119,7 +127,7 @@ export function ItemDetail() {
               <Can perm="inventory.issue"><Button icon={ArrowUpFromLine} onClick={() => setModal('issue')}>Salida</Button></Can>
               <Can perm="inventory.adjust"><Button icon={ClipboardCheck} onClick={() => setModal('count')}>Conteo</Button></Can>
               <Can perm="inventory.request"><Button icon={ShoppingCart} onClick={() => setModal('request')}>Solicitar compra</Button></Can>
-              <Can perm="inventory.edit"><Button variant="ghost" icon={Pencil} onClick={() => setModal('edit')}>Editar</Button></Can>
+              <Can perm={['inventory.edit', 'inventory.create']}><Button variant="ghost" icon={Pencil} onClick={() => setModal('edit')}>Editar</Button></Can>
             </>} />
           <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
             <StatCard label="Existencia" value={`${fmtNum(i.quantity_on_hand)}`} tone={stockTone(i)} hint={i.unit} />
@@ -129,7 +137,7 @@ export function ItemDetail() {
           </div>
           <div className="grid gap-4 lg:grid-cols-3">
             <Section title="Datos" className="lg:col-span-1">
-              <KeyValue cols={1} items={[['Ubicación', i.location], ['Categoría', i.category], ['Proveedor', i.suppliers?.name], ['Precio de compra', fmtMoney(i.unit_cost)],
+              <KeyValue cols={1} items={[['Ubicación', i.location], ['Categoría', i.category], ['Proveedor', i.suppliers?.name], ...(canCosts ? [['Precio de compra', fmtMoney(i.unit_cost)] as [string, string]] : []),
                 ['Compatible con', i.inventory_item_models?.length ? i.inventory_item_models.map((m) => modelLabel(models.data?.find((x) => x.id === m.model_id))).join(', ') : 'Sin especificar']]} />
               {i.description && <p className="mt-3 border-t border-line pt-3 text-sm">{i.description}</p>}
               {!!res.data?.length && <div className="mt-3 border-t border-line pt-3 text-sm"><div className="mb-1 text-xs text-muted">Reservas activas</div>
@@ -141,7 +149,8 @@ export function ItemDetail() {
                 { key: 'type', header: 'Movimiento', value: (m) => MOVE[m.movement_type] },
                 { key: 'quantity', header: 'Cantidad', align: 'right', render: (m) => <span className={cx('num font-medium', m.quantity > 0 ? 'text-ok' : 'text-bad')}>{m.quantity > 0 ? '+' : ''}{fmtNum(m.quantity)}</span> },
                 { key: 'balance_after', header: 'Saldo', align: 'right', render: (m) => <span className="num">{fmtNum(m.balance_after)}</span> },
-                { key: 'who', header: 'Por', mobile: 'hide', value: (m) => m.employees?.full_name },
+                ...(can('settings.manage') ? [{ key: 'who', header: 'Por', mobile: 'hide' as const, value: (m: any) => who(m.employees?.full_name, m.performed_by) }] : []),
+                ...(canCosts ? [{ key: 'cost', header: 'Costo c/u', align: 'right' as const, mobile: 'hide' as const, render: (m: any) => <span className="num">{fmtMoney(m.unit_cost)}</span> }] : []),
                 { key: 'notes', header: 'Notas', mobile: 'hide', value: (m) => m.notes ?? m.suppliers?.name },
               ]} />
             </div>
@@ -159,6 +168,7 @@ export function ItemDetail() {
 function MoveModal({ item, kind, onClose }: { item: Item; kind: 'receive' | 'issue' | 'count'; onClose: () => void }) {
   const suppliers = useSuppliers();
   const [qty, setQty] = useState(kind === 'count' ? String(item.quantity_on_hand) : '');
+  const canCosts = useCanSeeCosts();
   const [cost, setCost] = useState(item.unit_cost?.toString() ?? '');
   const [supplier, setSupplier] = useState(item.supplier_id ?? '');
   const [notes, setNotes] = useState('');
@@ -175,7 +185,7 @@ function MoveModal({ item, kind, onClose }: { item: Item; kind: 'receive' | 'iss
         <p className="text-sm text-muted">{item.name} · existencia actual <span className="num">{fmtNum(item.quantity_on_hand)}</span></p>
         <Field label={kind === 'count' ? 'Cantidad contada' : 'Cantidad'}><Input type="number" min="0" step="0.01" inputMode="decimal" value={qty} onChange={(e) => setQty(e.target.value)} /></Field>
         {kind === 'receive' && <FormGrid>
-          <Field label="Costo c/u"><Input type="number" step="0.01" value={cost} onChange={(e) => setCost(e.target.value)} /></Field>
+          {canCosts && <Field label="Costo c/u"><Input type="number" step="0.01" value={cost} onChange={(e) => setCost(e.target.value)} /></Field>}
           <Field label="Proveedor"><Select value={supplier} onChange={(e) => setSupplier(e.target.value)} placeholder="—" options={(suppliers.data ?? []).map((s) => ({ value: s.id, label: s.name }))} /></Field>
         </FormGrid>}
         <Field label={kind === 'count' ? 'Motivo del ajuste' : 'Notas'} required={kind !== 'receive'}><Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder={kind === 'issue' ? 'Destino / uso' : undefined} /></Field>
@@ -203,6 +213,7 @@ function RequestModal({ item, onClose }: { item?: Item; onClose: () => void }) {
 
 export function PurchasesPage() {
   const { can } = useAuth();
+  const who = useWho();
   const [scope, setScope] = useState<'open' | 'all'>('open');
   const [creating, setCreating] = useState(false);
   const [receiving, setReceiving] = useState<any>(null);
@@ -220,7 +231,7 @@ export function PurchasesPage() {
           { key: 'description', header: 'Pieza', mobile: 'title', render: (r) => <span className="font-medium">{r.description}{r.part_number && <span className="num ml-2 text-xs text-muted">{r.part_number}</span>}</span> },
           { key: 'quantity', header: 'Cant.', align: 'right', render: (r) => <span className="num">{fmtNum(r.quantity)}</span> },
           { key: 'reason', header: 'Motivo', mobile: 'hide' },
-          { key: 'who', header: 'Solicitó', mobile: 'hide', value: (r) => r.employees?.full_name },
+          { key: 'who', header: 'Solicitó', mobile: 'hide', value: (r) => who(r.employees?.full_name, r.requested_by) ?? '—' },
           { key: 'requested_at', header: 'Fecha', mobile: 'hide', render: (r) => fmtDateTime(r.requested_at) },
           { key: 'status', header: 'Estado', render: (r) => <StatusBadge map={PR_STATUS} value={r.status} /> },
           { key: 'act', header: '', sortable: false, render: (r) => (
@@ -242,6 +253,7 @@ function ReceiveRequest({ req, onClose }: { req: any; onClose: () => void }) {
   const [creating, setCreating] = useState(false);
   const [qty, setQty] = useState(String(req.quantity));
   const [cost, setCost] = useState('');
+  const canCosts = useCanSeeCosts();
   const save = useAction(() => rpc('inventory_receive', { p_item: itemId, p_qty: Number(qty), p_unit_cost: cost === '' ? null : Number(cost), p_supplier: req.supplier_id, p_notes: 'Solicitud de compra', p_purchase_request: req.id }),
     { invalidate: [keys.all], success: 'Recibido y añadido al inventario', onSuccess: onClose });
   return (
@@ -254,7 +266,7 @@ function ReceiveRequest({ req, onClose }: { req: any; onClose: () => void }) {
         {!req.item_id && <Button size="sm" icon={PackagePlus} onClick={() => setCreating(true)}>Crear artículo nuevo</Button>}
         <FormGrid>
           <Field label="Cantidad"><Input type="number" value={qty} onChange={(e) => setQty(e.target.value)} /></Field>
-          <Field label="Costo c/u"><Input type="number" step="0.01" value={cost} onChange={(e) => setCost(e.target.value)} /></Field>
+          {canCosts && <Field label="Costo c/u"><Input type="number" step="0.01" value={cost} onChange={(e) => setCost(e.target.value)} /></Field>}
         </FormGrid>
       </div>
       {creating && <ItemForm onClose={() => { setCreating(false); items.refetch(); }} prefill={{ name: req.description, part_number: req.part_number }} />}
@@ -279,7 +291,8 @@ export function SuppliersPage() {
 
 function SupplierForm({ s, onClose }: { s: any; onClose: () => void }) {
   const [v, setV] = useState({ name: s.name ?? '', contact: s.contact ?? '', phone: s.phone ?? '', email: s.email ?? '', address: s.address ?? '', notes: s.notes ?? '' });
-  const save = useAction(() => s.id ? run(supabase.from('suppliers').update(v).eq('id', s.id)) : run(supabase.from('suppliers').insert(v)), { invalidate: [keys.all], success: 'Proveedor guardado', onSuccess: onClose });
+  const { save: saveOrRequest } = useSaveOrRequest();
+  const save = useAction(() => s.id ? saveOrRequest('suppliers', s.id, v, s) : run(supabase.from('suppliers').insert(v)), { invalidate: [keys.all], success: savedMsg('Proveedor guardado'), onSuccess: onClose });
   const f = (k: keyof typeof v) => ({ value: v[k], onChange: (e: { target: { value: string } }) => setV({ ...v, [k]: e.target.value }) });
   return (
     <Modal open onClose={onClose} title={s.id ? 'Editar proveedor' : 'Nuevo proveedor'} footer={<><Button onClick={onClose}>Cancelar</Button><Button variant="primary" disabled={!v.name.trim()} loading={save.isPending} onClick={() => save.mutate()}>Guardar</Button></>}>
@@ -354,15 +367,17 @@ export function LowStockKpi() {
 
 export function StockReport() {
   const q = useItems();
+  const canCosts = useCanSeeCosts();
   const [tab, setTab] = useState<'all' | 'out'>('all');
   return <>
     <Tabs value={tab} onChange={setTab} tabs={[{ id: 'all', label: 'Inventario actual' }, { id: 'out', label: 'Agotadas / bajo mínimo' }]} />
     <DataTable rows={(q.data ?? []).filter((i) => tab === 'all' || stockTone(i) !== 'ok')} loading={q.isLoading} error={q.error} exportName={tab === 'all' ? 'Inventario-actual' : 'Piezas-agotadas'}
-      columns={[...itemColumns, { key: 'value', header: 'Valor', align: 'right', value: (i) => Number(i.quantity_on_hand) * Number(i.unit_cost ?? 0), render: (i) => <span className="num">{fmtMoney(Number(i.quantity_on_hand) * Number(i.unit_cost ?? 0))}</span> }]} />
+      columns={canCosts ? [...itemColumns, { key: 'value', header: 'Valor', align: 'right', value: (i) => Number(i.quantity_on_hand) * Number(i.unit_cost ?? 0), render: (i) => <span className="num">{fmtMoney(Number(i.quantity_on_hand) * Number(i.unit_cost ?? 0))}</span> }] : itemColumns} />
   </>;
 }
 
 export function TopPartsReport() {
+  const canCosts = useCanSeeCosts();
   const q = useData([...keys.all, 'consumption'], () => run(supabase.from('inventory_consumption').select('*').order('month', { ascending: false })) as Promise<any[]>);
   const totals = useMemo(() => {
     const m = new Map<string, any>();
@@ -374,6 +389,6 @@ export function TopPartsReport() {
     { key: 'sku', header: 'Código', render: (r) => <span className="tag-unit">{r.sku}</span> },
     { key: 'category', header: 'Categoría', mobile: 'hide' },
     { key: 'quantity', header: 'Utilizadas', align: 'right', render: (r) => <span className="num font-medium">{fmtNum(r.quantity)}</span> },
-    { key: 'cost', header: 'Costo', align: 'right', render: (r) => <span className="num">{fmtMoney(r.cost)}</span> },
+    ...(canCosts ? [{ key: 'cost', header: 'Costo', align: 'right' as const, render: (r: any) => <span className="num">{fmtMoney(r.cost)}</span> }] : []),
   ]} />;
 }

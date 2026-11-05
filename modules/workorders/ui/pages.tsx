@@ -5,7 +5,8 @@ import { supabase } from '@core/data/supabase';
 import { rpc, run, useAction, useData } from '@core/data/api';
 import { useLiveTable } from '@core/data/realtime';
 import { fleetKeys } from '@core/data/shared';
-import { Can, useAuth } from '@core/auth/AuthProvider';
+import { Can, useAuth, useWho } from '@core/auth/AuthProvider';
+import { savedMsg, useSaveOrRequest } from '@core/data/changes';
 import { Slot, useSlotItems } from '@core/modules/Slot';
 import { fmtAgo, fmtDate, fmtDateTime, fmtHours, fmtMoney, fmtNum } from '@core/lib/format';
 import { Badge, Button, Card, EmptyState, KeyValue, PageHeader, QueryView, Section, Segmented, StatCard, StatusBadge, UnitTag, cx } from '@core/ui/primitives';
@@ -19,19 +20,23 @@ import { CreateWorkOrderModal } from './CreateWorkOrder';
 
 const overdue = (w: WorkOrder) => OPEN.includes(w.status) && w.due_at && new Date(w.due_at) < new Date();
 
-export const woColumns = (withVehicle = true): Column<WorkOrder>[] => [
+type Who = ReturnType<typeof useWho>;
+const mechLabel = (w: WorkOrder, who: Who) => who(w.mechanic?.full_name, w.assigned_mechanic_id) ?? (w.assigned_mechanic_id ? 'Asignada' : 'Sin asignar');
+
+export const woColumns = (who: Who, withVehicle = true): Column<WorkOrder>[] => [
   { key: 'order_number', header: 'Orden', mobile: 'title', render: (w) => <span className="num font-semibold">{w.order_number}{overdue(w) && <Badge tone="bad" dot={false} className="ml-2">Atrasada</Badge>}</span> },
   ...(withVehicle ? [{ key: 'unit', header: 'Vehículo', value: (w: WorkOrder) => w.vehicles.unit_number, render: (w: WorkOrder) => <UnitTag>{w.vehicles.unit_number}</UnitTag> }] : []),
   { key: 'reported_problem', header: 'Problema', className: 'max-w-[320px] truncate' },
   { key: 'priority', header: 'Prioridad', value: (w) => PRIORITY[w.priority]?.label, render: (w) => <StatusBadge map={PRIORITY} value={w.priority} /> },
   { key: 'status', header: 'Estado', value: (w) => WO_STATUS[w.status]?.label, render: (w) => <StatusBadge map={WO_STATUS} value={w.status} /> },
-  { key: 'mechanic', header: 'Mecánico', mobile: 'hide', value: (w) => w.mechanic?.full_name ?? 'Sin asignar' },
+  { key: 'mechanic', header: 'Mecánico', mobile: 'hide', value: (w) => mechLabel(w, who) },
   { key: 'created_at', header: 'Abierta', mobile: 'hide', render: (w) => <span className="text-[13px] text-muted">{fmtAgo(w.created_at)}</span> },
 ];
 
 /** Panel del taller: pensado para teléfono o tableta */
 export function ShopHome() {
   const { profile, can } = useAuth();
+  const who = useWho();
   const nav = useNavigate();
   const [scope, setScope] = useState<'mine' | 'open' | 'closed'>(can('workorders.edit') ? 'open' : 'mine');
   const q = useWorkOrders({ scope: scope === 'closed' ? 'closed' : 'open' });
@@ -63,7 +68,7 @@ export function ShopHome() {
                     <Link key={w.id} to={`/taller/${w.id}`} className={cx('block rounded-md border bg-panel p-2.5 shadow-card hover:border-line-strong', overdue(w) ? 'border-bad/50' : 'border-line')}>
                       <div className="flex items-center justify-between"><UnitTag>{w.vehicles.unit_number}</UnitTag><StatusBadge map={PRIORITY} value={w.priority} /></div>
                       <div className="mt-1.5 line-clamp-2 text-[13px]">{w.reported_problem}</div>
-                      <div className="mt-1.5 flex justify-between text-[11px] text-muted"><span className="num">{w.order_number}</span><span>{w.mechanic?.full_name.split(' ')[0] ?? 'Sin asignar'}</span></div>
+                      <div className="mt-1.5 flex justify-between text-[11px] text-muted"><span className="num">{w.order_number}</span><span>{mechLabel(w, who).split(' ')[0]}</span></div>
                     </Link>
                   ))}
                 </div>
@@ -73,7 +78,7 @@ export function ShopHome() {
         </div>
       )}
       <div className={cx(scope !== 'closed' && rows.length > 0 && 'xl:hidden')}>
-        <DataTable rows={rows} loading={q.isLoading} error={q.error} columns={woColumns()} onRowClick={(w) => nav(`/taller/${w.id}`)} exportName="Ordenes-de-trabajo"
+        <DataTable rows={rows} loading={q.isLoading} error={q.error} columns={woColumns(who)} onRowClick={(w) => nav(`/taller/${w.id}`)} exportName="Ordenes-de-trabajo"
           empty={<EmptyState icon={Wrench} title={scope === 'mine' ? 'No tiene órdenes asignadas' : 'Sin órdenes'} />} />
       </div>
       {creating && <CreateWorkOrderModal draft={{}} onClose={() => setCreating(false)} />}
@@ -90,7 +95,8 @@ const NEXT: Record<string, { to: string; label: string; icon: typeof Play }[]> =
 
 export function WorkOrderDetail() {
   const { id = '' } = useParams();
-  const { can, profile } = useAuth();
+  const { can, profile, isAdmin } = useAuth();
+  const who = useWho();
   const confirm = useConfirm();
   const q = useData([...keys.all, id], () => run(supabase.from('work_orders').select(WO_SELECT).eq('id', id).single()) as Promise<WorkOrder>);
   useLiveTable('work_orders', [[...keys.all, id]], `id=eq.${id}`);
@@ -116,7 +122,7 @@ export function WorkOrderDetail() {
         const mayWork = open && (can('workorders.edit') || (can('workorders.work') && (!w.assigned_mechanic_id || w.assigned_mechanic_id === profile?.id)));
         return (
           <div className="mx-auto max-w-6xl">
-            <PageHeader back="/taller" eyebrow={<>Orden <span className="num">{w.order_number}</span> · abierta {fmtDateTime(w.created_at)}{w.opener && ` por ${w.opener.full_name}`}</>}
+            <PageHeader back="/taller" eyebrow={<>Orden <span className="num">{w.order_number}</span> · abierta {fmtDateTime(w.created_at)}{who(w.opener?.full_name, w.opened_by) && ` por ${who(w.opener?.full_name, w.opened_by)}`}</>}
               title={<span className="flex flex-wrap items-center gap-3"><Link to={`/flota/${w.vehicle_id}`} className="font-mono">{w.vehicles.unit_number}</Link><StatusBadge map={WO_STATUS} value={w.status} /><StatusBadge map={PRIORITY} value={w.priority} />{overdue(w) && <Badge tone="bad">Atrasada</Badge>}</span>}
               subtitle={w.reported_problem}
               actions={<>
@@ -132,7 +138,7 @@ export function WorkOrderDetail() {
 
             <div className="grid gap-4 lg:grid-cols-3">
               <div className="space-y-4 lg:col-span-2">
-                <Section title="Diagnóstico" actions={mayWork && w.diagnosis && <Button size="sm" variant="ghost" onClick={() => setModal('diagnose')}>Editar</Button>}>
+                <Section title="Diagnóstico" actions={(mayWork || can('workorders.view')) && open && w.diagnosis && <Button size="sm" variant="ghost" onClick={() => setModal('diagnose')}>{isAdmin ? 'Editar' : 'Pedir cambio'}</Button>}>
                   {w.description && <p className="mb-3 text-sm text-ink-2"><span className="font-medium">Descripción: </span>{w.description}</p>}
                   {w.diagnosis ? <p className="whitespace-pre-wrap text-sm">{w.diagnosis}</p> : <p className="text-sm text-muted">Aún sin diagnóstico.</p>}
                 </Section>
@@ -151,7 +157,7 @@ export function WorkOrderDetail() {
                               <div className="flex flex-wrap gap-x-3 text-xs text-muted">
                                 {p.part_number && <span className="num">{p.part_number}</span>}
                                 <span>{p.status === 'consumed' ? `${fmtNum(p.quantity_used)} utilizada(s)` : `${fmtNum(p.quantity)} solicitada(s)`}</span>
-                                {p.unit_cost != null && <span>{fmtMoney(p.unit_cost)} c/u</span>}
+                                {isAdmin && p.unit_cost != null && <span>{fmtMoney(p.unit_cost)} c/u</span>}
                                 {p.inventory_item_id ? <span>Inventario</span> : <span>Fuera de inventario</span>}
                               </div>
                             </div>
@@ -175,8 +181,8 @@ export function WorkOrderDetail() {
                     {(list) => (
                       <ul className="divide-y divide-line">{list.map((l) => (
                         <li key={l.id} className="flex justify-between gap-3 py-2 text-sm">
-                          <span><span className="num text-muted">{fmtDate(l.work_date)}</span> · {l.employees?.full_name}{l.description && <span className="text-muted"> — {l.description}</span>}</span>
-                          <span className="num shrink-0">{fmtHours(l.hours)}{l.rate != null && <span className="text-muted"> · {fmtMoney(l.hours * l.rate)}</span>}</span>
+                          <span><span className="num text-muted">{fmtDate(l.work_date)}</span>{who(l.employees?.full_name, l.mechanic_id) && <> · {who(l.employees?.full_name, l.mechanic_id)}</>}{l.description && <span className="text-muted"> — {l.description}</span>}</span>
+                          <span className="num shrink-0">{fmtHours(l.hours)}{isAdmin && l.rate != null && <span className="text-muted"> · {fmtMoney(l.hours * l.rate)}</span>}</span>
                         </li>
                       ))}</ul>
                     )}
@@ -189,18 +195,20 @@ export function WorkOrderDetail() {
               <div className="space-y-4">
                 <Section title="Resumen">
                   <KeyValue cols={1} items={[
-                    ['Mecánico', w.mechanic?.full_name ?? 'Sin asignar'], ['Fecha límite', fmtDateTime(w.due_at)],
+                    ['Mecánico', mechLabel(w, who)], ['Fecha límite', fmtDateTime(w.due_at)],
                     ['Horas motor (entrada / salida)', <span className="num">{fmtNum(w.engine_hours_in)} / {fmtNum(w.engine_hours_out)}</span>],
-                    ['Mano de obra', <span className="num">{fmtHours(w.labor_hours_total)} · {fmtMoney(w.labor_cost_total)}</span>],
-                    ['Piezas utilizadas', <span className="num">{fmtMoney(w.parts_cost_total)}</span>],
-                    ['Total', <span className="num text-base font-semibold">{fmtMoney(Number(w.labor_cost_total) + Number(w.parts_cost_total))}</span>],
-                    ['Origen', ({ manual: 'Manual', inspection: 'Inspección', incident: 'Incidente', maintenance: 'Mantenimiento', driver_report: 'Reporte del chofer' } as Record<string, string>)[w.source_type ?? 'manual']],
+                    ['Mano de obra', <span className="num">{fmtHours(w.labor_hours_total)}{isAdmin && ` · ${fmtMoney(w.labor_cost_total)}`}</span>],
+                    ...(isAdmin ? [
+                      ['Piezas utilizadas', <span className="num">{fmtMoney(w.parts_cost_total)}</span>],
+                      ['Total', <span className="num text-base font-semibold">{fmtMoney(Number(w.labor_cost_total) + Number(w.parts_cost_total))}</span>],
+                    ] as [string, React.ReactNode][] : []),
+                    ['Origen', ({ manual: 'Manual', inspection: 'Inspección', incident: 'Incidente', maintenance: 'Mantenimiento', driver_report: 'Reporte del operador', public_report: 'Reporte en taller (público)' } as Record<string, string>)[w.source_type ?? 'manual']],
                   ]} />
                   {w.observations && <p className="mt-3 border-t border-line pt-3 text-sm whitespace-pre-wrap">{w.observations}</p>}
                 </Section>
                 <Section title="Historial de estados">
                   <ol className="space-y-2">{history.data?.map((h) => (
-                    <li key={h.id} className="text-sm"><StatusBadge map={WO_STATUS} value={h.to_status} /><div className="mt-0.5 text-xs text-muted">{fmtDateTime(h.changed_at)} · {h.employees?.full_name ?? 'Sistema'}</div>{h.notes && <p className="text-[13px]">{h.notes}</p>}</li>
+                    <li key={h.id} className="text-sm"><StatusBadge map={WO_STATUS} value={h.to_status} /><div className="mt-0.5 text-xs text-muted">{fmtDateTime(h.changed_at)}{isAdmin && ` · ${h.employees?.full_name ?? 'Sistema'}`}</div>{h.notes && <p className="text-[13px]">{h.notes}</p>}</li>
                   ))}</ol>
                 </Section>
               </div>
@@ -230,9 +238,16 @@ export function WorkOrderDetail() {
 
 function DiagnoseModal({ w, onClose }: { w: WorkOrder; onClose: () => void }) {
   const [text, setText] = useState(w.diagnosis ?? '');
-  const save = useAction(() => rpc('diagnose_work_order', { p_wo: w.id, p_diagnosis: text }), { invalidate: [keys.all], success: 'Diagnóstico registrado', onSuccess: onClose });
+  const { save: saveOrRequest, isAdmin } = useSaveOrRequest();
+  // Un diagnóstico ya guardado solo lo cambia el admin; los demás envían solicitud
+  const asRequest = !!w.diagnosis && !isAdmin;
+  const save = useAction(() => asRequest
+      ? saveOrRequest('work_orders', w.id, { diagnosis: text }, w as unknown as Record<string, unknown>)
+      : rpc('diagnose_work_order', { p_wo: w.id, p_diagnosis: text }),
+    { invalidate: [keys.all], success: asRequest ? savedMsg() : 'Diagnóstico registrado', onSuccess: onClose });
   return (
-    <Modal open onClose={onClose} title="Diagnóstico" footer={<><Button onClick={onClose}>Cancelar</Button><Button variant="primary" loading={save.isPending} onClick={() => save.mutate()}>Guardar</Button></>}>
+    <Modal open onClose={onClose} title={asRequest ? 'Pedir cambio de diagnóstico' : 'Diagnóstico'} footer={<><Button onClick={onClose}>Cancelar</Button><Button variant="primary" loading={save.isPending} onClick={() => save.mutate()}>{asRequest ? 'Enviar solicitud' : 'Guardar'}</Button></>}>
+      {asRequest && <p className="mb-3 rounded-md bg-info-soft px-3 py-2 text-[13px] text-info">El diagnóstico ya fue guardado. Su cambio se enviará al administrador para aprobación.</p>}
       <p className="mb-2 text-sm text-muted">Problema reportado: {w.reported_problem}</p>
       <Textarea rows={6} value={text} onChange={(e) => setText(e.target.value)} placeholder="Causa encontrada, pruebas realizadas y reparación necesaria" />
     </Modal>
@@ -280,10 +295,12 @@ function CompleteModal({ w, onClose }: { w: WorkOrder; onClose: () => void }) {
 function AssignModal({ w, onClose }: { w: WorkOrder; onClose: () => void }) {
   const [m, setM] = useState(w.assigned_mechanic_id ?? '');
   const [prio, setPrio] = useState(w.priority);
+  const { save: saveOrRequest } = useSaveOrRequest();
   const save = useAction(async () => {
     if (m && m !== w.assigned_mechanic_id) await rpc('assign_work_order', { p_wo: w.id, p_mechanic: m });
-    if (prio !== w.priority) await run(supabase.from('work_orders').update({ priority: prio }).eq('id', w.id));
-  }, { invalidate: [keys.all], success: 'Orden actualizada', onSuccess: onClose });
+    if (prio !== w.priority) return saveOrRequest('work_orders', w.id, { priority: prio });
+    return 'saved' as const;
+  }, { invalidate: [keys.all], success: savedMsg('Orden actualizada'), onSuccess: onClose });
   return (
     <Modal open onClose={onClose} title="Asignación" size="sm" footer={<><Button onClick={onClose}>Cancelar</Button><Button variant="primary" loading={save.isPending} onClick={() => save.mutate()}>Guardar</Button></>}>
       <div className="space-y-3">
@@ -295,6 +312,7 @@ function AssignModal({ w, onClose }: { w: WorkOrder; onClose: () => void }) {
 }
 
 function ManualPart({ woId, onClose, onAdded }: { woId: string; onClose: () => void; onAdded: () => void }) {
+  const { isAdmin } = useAuth();
   const [v, setV] = useState({ description: '', part_number: '', quantity: '1', unit_cost: '', to_purchase: false });
   const save = useAction(() => rpc('add_work_order_part', { p_wo: woId, p: { description: v.description, part_number: v.part_number || null, quantity: Number(v.quantity) || 1,
     unit_cost: v.unit_cost === '' ? null : Number(v.unit_cost), to_purchase: v.to_purchase } }), { invalidate: [keys.all, ['inventory']], success: 'Pieza añadida', onSuccess: () => { onAdded(); onClose(); } });
@@ -302,10 +320,10 @@ function ManualPart({ woId, onClose, onAdded }: { woId: string; onClose: () => v
     <Modal open onClose={onClose} title="Pieza (fuera de inventario)" size="sm" footer={<><Button onClick={onClose}>Cancelar</Button><Button variant="primary" disabled={!v.description.trim()} loading={save.isPending} onClick={() => save.mutate()}>Añadir</Button></>}>
       <div className="space-y-3">
         <Field label="Descripción"><Input value={v.description} onChange={(e) => setV({ ...v, description: e.target.value })} /></Field>
-        <FormGrid cols={3}>
+        <FormGrid cols={isAdmin ? 3 : 2}>
           <Field label="Nº de pieza"><Input className="h-10 font-mono" value={v.part_number} onChange={(e) => setV({ ...v, part_number: e.target.value })} /></Field>
           <Field label="Cantidad"><Input type="number" min="1" value={v.quantity} onChange={(e) => setV({ ...v, quantity: e.target.value })} /></Field>
-          <Field label="Costo c/u"><Input type="number" step="0.01" value={v.unit_cost} onChange={(e) => setV({ ...v, unit_cost: e.target.value })} /></Field>
+          {isAdmin && <Field label="Costo c/u"><Input type="number" step="0.01" value={v.unit_cost} onChange={(e) => setV({ ...v, unit_cost: e.target.value })} /></Field>}
         </FormGrid>
         <Checkbox label="Hay que comprarla (crea solicitud de compra si hay inventario)" checked={v.to_purchase} onChange={(e) => setV({ ...v, to_purchase: e.target.checked })} />
       </div>
@@ -316,8 +334,9 @@ function ManualPart({ woId, onClose, onAdded }: { woId: string; onClose: () => v
 // ---- Expedientes, dashboard y reportes ----
 export function VehicleWorkOrdersTab({ vehicleId }: { vehicleId: string }) {
   const q = useWorkOrders({ vehicleId, scope: 'all' });
+  const who = useWho();
   const nav = useNavigate();
-  return <DataTable rows={q.data} loading={q.isLoading} error={q.error} columns={woColumns(false)} onRowClick={(w) => nav(`/taller/${w.id}`)} exportName="Ordenes-vehiculo" empty={<EmptyState icon={Wrench} title="Sin órdenes de trabajo" />} />;
+  return <DataTable rows={q.data} loading={q.isLoading} error={q.error} columns={woColumns(who, false)} onRowClick={(w) => nav(`/taller/${w.id}`)} exportName="Ordenes-vehiculo" empty={<EmptyState icon={Wrench} title="Sin órdenes de trabajo" />} />;
 }
 
 export function OpenOrdersKpi() {

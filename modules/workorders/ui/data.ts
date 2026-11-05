@@ -19,7 +19,7 @@ export const keys = { all: ['work_orders'] as const };
 
 export interface WorkOrder {
   id: string; order_number: string; vehicle_id: string; reported_problem: string; description: string | null; diagnosis: string | null;
-  priority: string; status: string; assigned_mechanic_id: string | null; source_type: string | null; source_id: string | null; due_at: string | null;
+  priority: string; status: string; assigned_mechanic_id: string | null; opened_by: string | null; source_type: string | null; source_id: string | null; due_at: string | null;
   observations: string | null; labor_hours_total: number; labor_cost_total: number; parts_cost_total: number; created_at: string;
   diagnosed_at: string | null; started_at: string | null; completed_at: string | null; closed_at: string | null; engine_hours_in: number | null; engine_hours_out: number | null;
   vehicles: { unit_number: string; model_id: string }; mechanic: { full_name: string } | null; opener: { full_name: string } | null;

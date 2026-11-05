@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { z } from 'zod';
 import { supabase } from '@core/data/supabase';
 import { run, useAction } from '@core/data/api';
+import { savedMsg, useSaveOrRequest } from '@core/data/changes';
 import { uploadFile } from '@core/data/storage';
 import { fleetKeys, type Vehicle } from '@core/data/shared';
 import { Modal } from '@core/ui/Modal';
@@ -32,6 +33,7 @@ export function VehicleForm({ open, onClose, vehicle }: { open: boolean; onClose
     current_location: vehicle?.current_location ?? '', notes: vehicle?.notes ?? '',
   }, schema);
   const [photo, setPhoto] = useState<File[]>([]);
+  const { save: saveOrRequest } = useSaveOrRequest();
 
   const save = useAction(async () => {
     const v = f.validate();
@@ -41,10 +43,10 @@ export function VehicleForm({ open, onClose, vehicle }: { open: boolean; onClose
     if (vehicle) {
       // Horas/millaje no se editan aquí (solo avanzan por lecturas); evita retrocesos
       delete data.engine_hours; delete data.mileage;
-      return run(supabase.from('vehicles').update(data).eq('id', vehicle.id).select().single());
+      return saveOrRequest('vehicles', vehicle.id, data, vehicle as unknown as Record<string, unknown>);
     }
     return run(supabase.from('vehicles').insert({ ...data, engine_hours: v.engine_hours ?? 0 }).select().single());
-  }, { invalidate: [fleetKeys.vehicles], success: vehicle ? 'Vehículo actualizado' : 'Vehículo añadido', onSuccess: onClose });
+  }, { invalidate: [fleetKeys.vehicles], success: vehicle ? savedMsg('Vehículo actualizado') : 'Vehículo añadido', onSuccess: onClose });
 
   return (
     <Modal open={open} onClose={onClose} title={vehicle ? `Editar ${vehicle.unit_number}` : 'Añadir vehículo'} size="lg"

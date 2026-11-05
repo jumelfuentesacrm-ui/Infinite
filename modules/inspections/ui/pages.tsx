@@ -5,7 +5,7 @@ import { supabase } from '@core/data/supabase';
 import { rpc, run, useAction, useData } from '@core/data/api';
 import { useAttachments, VEHICLE_STATUS } from '@core/data/shared';
 import { useLiveTable } from '@core/data/realtime';
-import { Can, useAuth } from '@core/auth/AuthProvider';
+import { Can, useAuth, useWho } from '@core/auth/AuthProvider';
 import { Slot } from '@core/modules/Slot';
 import { Badge, Button, Card, EmptyState, KeyValue, LinkButton, PageHeader, QueryView, Section, StatusBadge, Tabs, UnitTag } from '@core/ui/primitives';
 import { DataTable, type Column } from '@core/ui/DataTable';
@@ -17,7 +17,7 @@ import { FUEL_LEVELS, ITEM_RESULT, keys, RESULT, useCompliance, useInspections, 
 export const inspectionColumns = (withVehicle = true): Column<Inspection>[] => [
   { key: 'completed_at', header: 'Fecha', mobile: 'title', render: (i) => <span className="num">{fmtDateTime(i.completed_at)}</span> },
   ...(withVehicle ? [{ key: 'unit', header: 'Unidad', value: (i: Inspection) => i.vehicles?.unit_number, render: (i: Inspection) => <UnitTag>{i.vehicles?.unit_number}</UnitTag> }] : []),
-  { key: 'employee', header: 'Inspector', value: (i) => i.employees?.full_name },
+  { key: 'employee', header: 'Inspector', admin: true, value: (i) => i.employees?.full_name },
   { key: 'result', header: 'Resultado', value: (i) => RESULT[i.result]?.label, render: (i) => <StatusBadge map={RESULT} value={i.result} /> },
   { key: 'engine_hours', header: 'Horas', align: 'right', mobile: 'hide', render: (i) => <span className="num">{i.engine_hours != null ? fmtNum(i.engine_hours) : '—'}</span> },
   { key: 'reviewed', header: 'Revisada', mobile: 'hide', value: (i) => (i.reviewed_at ? 'Sí' : 'No'), render: (i) => i.reviewed_at ? <ShieldCheck className="size-4 text-ok" /> : <span className="text-faint">—</span> },
@@ -59,7 +59,7 @@ function Compliance() {
         empty={<EmptyState title="No hay vehículos asignados ni en operación hoy" />}
         columns={[
           { key: 'unit_number', header: 'Unidad', mobile: 'title', render: (r) => <UnitTag>{r.unit_number}</UnitTag> },
-          { key: 'employee_name', header: 'Chofer', render: (r) => r.employee_name ?? <span className="text-faint">Sin asignar</span> },
+          { key: 'employee_name', header: 'Operador', admin: true, render: (r) => r.employee_name ?? <span className="text-faint">Sin asignar</span> },
           { key: 'status', header: 'Vehículo', render: (r) => <StatusBadge map={VEHICLE_STATUS} value={r.status} /> },
           { key: 'inspected_today', header: 'Inspección de hoy', render: (r) => r.inspected_today
             ? <span className="flex items-center gap-2"><StatusBadge map={RESULT} value={r.result} /><span className="num text-xs text-muted">{fmtTime(r.completed_at)}</span></span>
@@ -71,6 +71,7 @@ function Compliance() {
 
 export function InspectionDetail() {
   const { id = '' } = useParams();
+  const who = useWho();
   const q = useData([...keys.all, id], async () => {
     const [ins, results] = await Promise.all([
       run(supabase.from('inspections').select('*, vehicles(id, unit_number), employees!inspections_employee_id_fkey(full_name), reviewer:employees!inspections_reviewed_by_fkey(full_name)').eq('id', id).single()) as Promise<any>,
@@ -93,7 +94,7 @@ export function InspectionDetail() {
           <div className="mx-auto max-w-4xl">
             <PageHeader back="/inspecciones" eyebrow={`Inspección · ${fmtDateTime(ins.completed_at)}`}
               title={<span className="flex flex-wrap items-center gap-3"><span className="font-mono">{ins.vehicles?.unit_number}</span><StatusBadge map={RESULT} value={ins.result} /></span>}
-              subtitle={`Por ${ins.employees?.full_name}`}
+              subtitle={who(ins.employees?.full_name, ins.employee_id) ? `Por ${who(ins.employees?.full_name, ins.employee_id)}` : undefined}
               actions={fails.length > 0 && <Slot name="inspection.actions" props={{ inspectionId: id, vehicleId: ins.vehicle_id, summary }} />} />
             <div className="grid gap-4 md:grid-cols-3">
               <div className="space-y-4 md:col-span-2">
@@ -127,7 +128,7 @@ export function InspectionDetail() {
                 </Section>
                 <Section title="Revisión">
                   {ins.reviewed_at ? (
-                    <div className="text-sm"><div className="font-medium text-ok">Revisada por {ins.reviewer?.full_name}</div>
+                    <div className="text-sm"><div className="font-medium text-ok">Revisada{who(ins.reviewer?.full_name, ins.reviewed_by) && ` por ${who(ins.reviewer?.full_name, ins.reviewed_by)}`}</div>
                       <div className="text-xs text-muted">{fmtDateTime(ins.reviewed_at)}</div>{ins.review_notes && <p className="mt-2">{ins.review_notes}</p>}</div>
                   ) : (
                     <Can perm="inspections.approve" fallback={<p className="text-sm text-muted">Pendiente de revisión</p>}>

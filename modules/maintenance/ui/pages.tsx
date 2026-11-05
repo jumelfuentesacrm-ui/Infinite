@@ -4,7 +4,7 @@ import { CalendarClock, CheckCircle2, Play, Plus, ThumbsUp, ThumbsDown, Trash2, 
 import { supabase } from '@core/data/supabase';
 import { rpc, run, useAction, useData } from '@core/data/api';
 import { fleetKeys, useVehicle } from '@core/data/shared';
-import { Can, useAuth } from '@core/auth/AuthProvider';
+import { Can, useAuth, useWho } from '@core/auth/AuthProvider';
 import type { VehicleRef } from '@core/modules/slots';
 import { fmtDate, fmtDateTime, fmtHours, fmtMoney, fmtNum, today } from '@core/lib/format';
 import { Button, EmptyState, KeyValue, PageHeader, QueryView, Section, Segmented, StatCard, StatusBadge, Tabs, UnitTag } from '@core/ui/primitives';
@@ -28,9 +28,9 @@ const recCols = (withVehicle = true): Column<Rec>[] => [
   ...(withVehicle ? [{ key: 'unit', header: 'Vehículo', value: (r: Rec) => r.vehicles.unit_number, render: (r: Rec) => <UnitTag>{r.vehicles.unit_number}</UnitTag> }] : []),
   { key: 'type', header: 'Mantenimiento', value: (r) => r.maintenance_types.name },
   { key: 'status', header: 'Estado', value: (r) => REC_STATUS[r.status]?.label, render: (r) => <StatusBadge map={REC_STATUS} value={r.status} /> },
-  { key: 'who', header: 'Responsable', mobile: 'hide', value: (r) => r.performer?.full_name ?? r.responsible?.full_name },
+  { key: 'who', header: 'Responsable', mobile: 'hide', value: (r) => r.performer?.full_name ?? r.responsible?.full_name, admin: true },
   { key: 'engine_hours', header: 'Horas', align: 'right', mobile: 'hide', render: (r) => r.engine_hours != null ? <span className="num">{fmtNum(r.engine_hours)}</span> : '—' },
-  { key: 'cost', header: 'Costo', align: 'right', mobile: 'hide', value: (r) => (r.cost_labor ?? 0) + (r.cost_parts ?? 0), render: (r) => r.status === 'completed' ? <span className="num">{fmtMoney((r.cost_labor ?? 0) + (r.cost_parts ?? 0))}</span> : '—' },
+  { key: 'cost', header: 'Costo', align: 'right', mobile: 'hide', admin: true, value: (r) => (r.cost_labor ?? 0) + (r.cost_parts ?? 0), render: (r) => r.status === 'completed' ? <span className="num">{fmtMoney((r.cost_labor ?? 0) + (r.cost_parts ?? 0))}</span> : '—' },
 ];
 
 export function MaintenancePage() {
@@ -110,7 +110,8 @@ function ScheduleModal({ initial, onClose }: { initial: Partial<DueRow>; onClose
 
 export function MaintenanceDetail() {
   const { id = '' } = useParams();
-  const { can } = useAuth();
+  const { can, isAdmin } = useAuth();
+  const who = useWho();
   const q = useData([...keys.all, 'record', id], async () => {
     const [rec, parts] = await Promise.all([
       run(supabase.from('maintenance_records').select(REC_SELECT).eq('id', id).single()) as Promise<Rec>,
@@ -138,10 +139,10 @@ export function MaintenanceDetail() {
           <div className="grid gap-4 md:grid-cols-2">
             <Section title="Detalle">
               <KeyValue items={[
-                ['Programado', fmtDate(rec.scheduled_for)], ['Responsable', rec.responsible?.full_name],
-                ['Realizado', fmtDateTime(rec.performed_at)], ['Realizado por', rec.performer?.full_name],
+                ['Programado', fmtDate(rec.scheduled_for)], ['Responsable', who(rec.responsible?.full_name, (rec as any).responsible_id)],
+                ['Realizado', fmtDateTime(rec.performed_at)], ['Realizado por', who(rec.performer?.full_name, (rec as any).performed_by)],
                 ['Horas de motor', rec.engine_hours != null ? fmtHours(rec.engine_hours) : null], ['Millaje', rec.mileage != null ? fmtNum(rec.mileage) : null],
-                ['Mano de obra', rec.labor_hours != null ? fmtHours(rec.labor_hours) : null], ['Costo total', rec.status === 'completed' ? fmtMoney((rec.cost_labor ?? 0) + (rec.cost_parts ?? 0)) : null],
+                ['Mano de obra', rec.labor_hours != null ? fmtHours(rec.labor_hours) : null], ['Costo total', isAdmin && rec.status === 'completed' ? fmtMoney((rec.cost_labor ?? 0) + (rec.cost_parts ?? 0)) : null],
                 ['Próximo (horas)', rec.next_due_hours != null ? fmtHours(rec.next_due_hours) : null], ['Próximo (fecha)', fmtDate(rec.next_due_date)],
               ]} />
               {rec.notes && <p className="mt-3 border-t border-line pt-3 text-sm">{rec.notes}</p>}

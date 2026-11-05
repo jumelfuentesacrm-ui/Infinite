@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { savedMsg, useSaveOrRequest } from '@core/data/changes';
 import { Plus } from 'lucide-react';
 import { z } from 'zod';
 import { supabase } from '@core/data/supabase';
@@ -45,10 +46,11 @@ function ModelForm({ model, onClose }: { model?: VehicleModel; onClose: () => vo
     vehicle_type: model?.vehicle_type ?? 'utv', uses_engine_hours: model?.uses_engine_hours ?? true,
     uses_mileage: model?.uses_mileage ?? false, notes: model?.notes ?? '',
   }, schema);
+  const { save: saveOrRequest } = useSaveOrRequest();
   const save = useAction(async () => {
     const v = f.validate(); if (!v) throw new Error('Revise los campos');
-    return model ? run(supabase.from('vehicle_models').update(v).eq('id', model.id)) : run(supabase.from('vehicle_models').insert(v));
-  }, { invalidate: [fleetKeys.models, fleetKeys.vehicles], success: 'Modelo guardado', onSuccess: onClose });
+    return model ? saveOrRequest('vehicle_models', model.id, v, model as unknown as Record<string, unknown>) : run(supabase.from('vehicle_models').insert(v));
+  }, { invalidate: [fleetKeys.models, fleetKeys.vehicles], success: savedMsg('Modelo guardado'), onSuccess: onClose });
   return (
     <Modal open onClose={onClose} title={model ? 'Editar modelo' : 'Nuevo modelo'}
       footer={<><Button onClick={onClose}>Cancelar</Button><Button variant="primary" loading={save.isPending} onClick={() => save.mutate()}>Guardar</Button></>}>

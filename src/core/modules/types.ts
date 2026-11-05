@@ -88,6 +88,8 @@ export interface ModuleManifest {
   /** Núcleo: siempre activo, no se puede desactivar */
   core?: boolean;
   routes?: AppRoute[];
+  /** Páginas abiertas sin iniciar sesión (ej. reporte rápido en el taller). Sin permisos: el servidor decide qué expone. */
+  publicRoutes?: { path: string; component: AnyComponent; /** Si se indica, aparece como enlace en la pantalla de PIN */ label?: string; icon?: LucideIcon }[];
   nav?: NavItem[];
   fieldActions?: FieldAction[];
   dashboard?: DashboardWidget[];

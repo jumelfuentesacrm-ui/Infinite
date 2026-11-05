@@ -74,10 +74,10 @@ create table public.roles (
   created_at  timestamptz not null default now()
 );
 insert into public.roles (id, name, description, is_system, home_path) values
-  ('admin',      'Administrador',     'Acceso completo a todos los módulos', true, '/dashboard'),
-  ('supervisor', 'Supervisor',        'Supervisa operaciones y aprueba',     true, '/dashboard'),
-  ('driver',     'Chofer / Operador', 'Opera vehículos y reporta',           true, '/m'),
-  ('mechanic',   'Mecánico',          'Taller, diagnósticos y reparaciones', true, '/taller');
+  ('admin',      'Admin',      'Acceso completo a todos los módulos', true, '/dashboard'),
+  ('supervisor', 'Supervisor', 'Supervisa operaciones y aprueba',     true, '/dashboard'),
+  ('driver',     'ATV/UTV',    'Opera vehículos y reporta',           true, '/m'),
+  ('mechanic',   'Mecánico',   'Taller, diagnósticos y reparaciones', true, '/taller');
 
 create table public.permissions (
   id          text primary key,             -- formato: <modulo>.<accion>[_<alcance>]

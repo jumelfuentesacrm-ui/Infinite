@@ -80,7 +80,7 @@ export class DemoRest {
       const matchCol = many ? fk.col : fk.ref_col;
       const keys = [...new Set(rows.map((r) => r[keyCol]).filter((x) => x != null).map(String))];
       const sub = keys.length
-        ? (await tx.query<Row>(`select * from public.${qi(node.table!)} where ${qi(matchCol)}::text = any($1::text[])`, [keys])).rows
+        ? (await tx.query<Row>(`select ${await this.star(tx, node.table!)} from public.${qi(node.table!)} where ${qi(matchCol)}::text = any($1::text[])`, [keys])).rows
         : [];
       await this.embed(tx, node.table!, sub, node.sub!, false);
       const star = node.sub!.some((s) => s.col === '*');
@@ -95,6 +95,21 @@ export class DemoRest {
       for (const r of rows) for (const k of Object.keys(r)) if (!cols.includes(k) && !tree.some((n) => n.alias === k)) delete r[k];
     }
     return rows;
+  }
+
+  /** '*' como PostgREST: solo las columnas que el rol actual puede leer (privilegios por columna) */
+  private starCache = new Map<string, string>();
+  private async star(tx: Transaction, table: string) {
+    const role = (await tx.query<{ r: string }>('select current_user as r')).rows[0].r;
+    const key = role + ':' + table;
+    if (!this.starCache.has(key)) {
+      const { rows } = await tx.query<{ c: string | null }>(`
+        select string_agg(quote_ident(attname), ', ' order by attnum) as c from pg_attribute
+         where attrelid = ('public.' || quote_ident($1))::regclass and attnum > 0 and not attisdropped
+           and has_column_privilege(attrelid, attnum, 'SELECT')`, [table]);
+      this.starCache.set(key, rows[0]?.c || '*');
+    }
+    return this.starCache.get(key)!;
   }
 
   private async argTypes(tx: Transaction, fn: string) {
@@ -148,8 +163,8 @@ export class DemoRest {
               const keys = Object.keys(r);
               const vals = keys.map((k) => (r[k] !== null && typeof r[k] === 'object' && !Array.isArray(r[k]) ? JSON.stringify(r[k]) : Array.isArray(r[k]) ? JSON.stringify(r[k]) : r[k]));
               const sql = keys.length
-                ? `insert into public.${qi(table)} (${keys.map(qi).join(', ')}) values (${keys.map((_, i) => `$${i + 1}`).join(', ')}) returning *`
-                : `insert into public.${qi(table)} default values returning *`;
+                ? `insert into public.${qi(table)} (${keys.map(qi).join(', ')}) values (${keys.map((_, i) => `$${i + 1}`).join(', ')}) returning ${await this.star(tx, table)}`
+                : `insert into public.${qi(table)} default values returning ${await this.star(tx, table)}`;
               rows.push(...(await tx.query<Row>(sql, vals)).rows);
             }
           } else if (method === 'PATCH') {
@@ -157,13 +172,13 @@ export class DemoRest {
             const keys = Object.keys(patch);
             const vals = keys.map((k) => (patch[k] !== null && typeof patch[k] === 'object' ? JSON.stringify(patch[k]) : patch[k]));
             const w = this.where(url.searchParams, keys.length + 1);
-            rows = (await tx.query<Row>(`update public.${qi(table)} set ${keys.map((k, i) => `${qi(k)} = $${i + 1}`).join(', ')}${w.sql} returning *`, [...vals, ...w.vals])).rows;
+            rows = (await tx.query<Row>(`update public.${qi(table)} set ${keys.map((k, i) => `${qi(k)} = $${i + 1}`).join(', ')}${w.sql} returning ${await this.star(tx, table)}`, [...vals, ...w.vals])).rows;
           } else if (method === 'DELETE') {
             const w = this.where(url.searchParams);
-            rows = (await tx.query<Row>(`delete from public.${qi(table)}${w.sql} returning *`, w.vals)).rows;
+            rows = (await tx.query<Row>(`delete from public.${qi(table)}${w.sql} returning ${await this.star(tx, table)}`, w.vals)).rows;
           } else {
             const w = this.where(url.searchParams);
-            let sql = `select * from public.${qi(table)}${w.sql}`;
+            let sql = `select ${await this.star(tx, table)} from public.${qi(table)}${w.sql}`;
             const order = url.searchParams.get('order');
             if (order) sql += ' order by ' + order.split(',').map((o) => {
               const [c, d, n] = o.split('.');

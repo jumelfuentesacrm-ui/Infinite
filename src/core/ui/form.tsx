@@ -5,7 +5,7 @@ import { useCallback, useState, type InputHTMLAttributes, type ReactNode, type S
 import type { ZodType } from 'zod';
 import { cx } from './primitives';
 
-const inputCls = 'w-full rounded-md border border-line-strong bg-panel px-3 text-[15px] md:text-sm text-ink placeholder:text-faint focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20 disabled:bg-sunken disabled:text-muted';
+const inputCls = 'w-full rounded-md border border-line-strong bg-panel px-3 text-base md:text-sm text-ink transition-[border-color,box-shadow] duration-150 placeholder:text-faint focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/15 disabled:bg-sunken disabled:text-muted';
 
 export function Field({ label, error, hint, children, required, className }: {
   label?: ReactNode; error?: string; hint?: ReactNode; children: ReactNode; required?: boolean; className?: string;
@@ -20,7 +20,7 @@ export function Field({ label, error, hint, children, required, className }: {
 }
 
 export function Input(props: InputHTMLAttributes<HTMLInputElement>) {
-  return <input {...props} className={cx(inputCls, 'h-10', props.className)} />;
+  return <input {...props} className={cx(inputCls, 'h-10 pointer-coarse:h-11', props.className)} />;
 }
 export function Textarea(props: TextareaHTMLAttributes<HTMLTextAreaElement>) {
   return <textarea rows={3} {...props} className={cx(inputCls, 'py-2', props.className)} />;
@@ -29,7 +29,7 @@ export function Select({ options, placeholder, ...props }: SelectHTMLAttributes<
   options: { value: string; label: string }[]; placeholder?: string;
 }) {
   return (
-    <select {...props} className={cx(inputCls, 'h-10 pr-8', props.className)}>
+    <select {...props} className={cx(inputCls, 'h-10 pr-8 pointer-coarse:h-11', props.className)}>
       {placeholder !== undefined && <option value="">{placeholder}</option>}
       {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
     </select>
@@ -38,7 +38,7 @@ export function Select({ options, placeholder, ...props }: SelectHTMLAttributes<
 export function Checkbox({ label, ...props }: InputHTMLAttributes<HTMLInputElement> & { label: ReactNode }) {
   return (
     <label className="inline-flex cursor-pointer items-center gap-2 text-sm">
-      <input type="checkbox" {...props} className="size-4 rounded border-line-strong accent-[var(--color-brand)]" />
+      <input type="checkbox" {...props} className="size-4 pointer-coarse:size-5 rounded border-line-strong accent-[var(--color-brand)]" />
       {label}
     </label>
   );

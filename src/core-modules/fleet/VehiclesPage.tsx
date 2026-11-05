@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Plus, Truck } from 'lucide-react';
 import { useVehicles, VEHICLE_STATUS, modelLabel, fleetKeys, type Vehicle } from '@core/data/shared';
 import { useLiveTable } from '@core/data/realtime';
@@ -10,17 +10,25 @@ import { fmtDate, fmtNum } from '@core/lib/format';
 import { VehicleForm } from './VehicleForm';
 
 const FILTERS = [
-  { id: 'all', label: 'Todos' }, { id: 'available', label: 'Disponibles' }, { id: 'busy', label: 'En uso' },
-  { id: 'shop', label: 'Taller' }, { id: 'out_of_service', label: 'Fuera de servicio' },
+  { id: 'all', label: 'Todos' }, { id: 'available', label: 'Disponibles' },
+  { id: 'shop', label: 'En taller' }, { id: 'out_of_service', label: 'Fuera de servicio' },
 ] as const;
 type F = (typeof FILTERS)[number]['id'];
-const match = (f: F, s: string) => f === 'all' || (f === 'busy' ? ['assigned', 'in_operation'].includes(s)
-  : f === 'shop' ? ['maintenance', 'repair'].includes(s) : s === f);
+/** Mismos grupos que la gráfica del dashboard */
+export const STATUS_GROUPS = {
+  available: ['available', 'assigned', 'in_operation'],
+  shop: ['maintenance', 'repair'],
+  out_of_service: ['out_of_service'],
+} as const;
+const match = (f: F, s: string) => f === 'all' || (STATUS_GROUPS[f] as readonly string[]).includes(s);
 
 export default function VehiclesPage() {
   const q = useVehicles();
   const nav = useNavigate();
-  const [filter, setFilter] = useState<F>('all');
+  const [params, setParams] = useSearchParams();
+  const fromUrl = params.get('estado') as F | null;
+  const filter: F = fromUrl && FILTERS.some((x) => x.id === fromUrl) ? fromUrl : 'all';
+  const setFilter = (f: F) => setParams(f === 'all' ? {} : { estado: f }, { replace: true });
   const [creating, setCreating] = useState(false);
   useLiveTable('vehicles', [fleetKeys.vehicles]);
 

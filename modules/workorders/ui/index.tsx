@@ -13,6 +13,8 @@ export default defineModule({
     { path: '/taller/:id', component: lazyExport(pages, 'WorkOrderDetail'), perm: ['workorders.view', 'workorders.report'] },
     { path: '/m/problema', component: lazyExport(create, 'ReportProblem'), perm: 'workorders.report' },
   ],
+  // Sin PIN: quien deja una unidad en el taller reporta qué le pasó (ver db/zz_public_report.sql)
+  publicRoutes: [{ path: '/reportar', label: 'Reportar problema sin PIN', icon: Wrench, component: lazyExport(() => import('./PublicReport'), 'PublicReport') }],
   nav: [{ to: '/taller', label: 'Órdenes de trabajo', icon: Wrench, perm: 'workorders.view', group: 'taller', order: 0, mobile: true }],
   fieldActions: [{ to: '/m/problema', label: 'Reportar problema', description: 'Falla mecánica', icon: MessageSquareWarning, perm: 'workorders.report', order: 5 }],
   dashboard: [
@@ -26,8 +28,8 @@ export default defineModule({
     contribute('incident.actions', { id: 'wo-from-incident', perm: 'workorders.create', component: lazyExport(create, 'FromIncident') }),
   ],
   reports: [
-    { id: 'mechanics', title: 'Actividad de los mecánicos', description: 'Órdenes, horas y mano de obra por mecánico y mes', perm: 'workorders.view', component: lazyExport(pages, 'MechanicActivityReport') },
-    { id: 'repairs', title: 'Reparaciones por vehículo', description: 'Órdenes, horas y costo acumulado por unidad', perm: 'workorders.view', component: lazyExport(pages, 'RepairsByVehicleReport') },
+    { id: 'mechanics', title: 'Actividad de los mecánicos', description: 'Órdenes, horas y mano de obra por mecánico y mes', perm: 'settings.manage', component: lazyExport(pages, 'MechanicActivityReport') },
+    { id: 'repairs', title: 'Reparaciones por vehículo', description: 'Órdenes, horas y costo acumulado por unidad', perm: 'inventory.view_costs', component: lazyExport(pages, 'RepairsByVehicleReport') },
   ],
   entityLinks: { work_order: (id) => `/taller/${id}` },
 });

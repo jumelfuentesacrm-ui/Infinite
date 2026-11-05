@@ -1,8 +1,8 @@
 import { Suspense } from 'react';
-import { BrowserRouter, MemoryRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, MemoryRouter, Navigate, Route, Routes, matchPath, useLocation } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider, useAuth } from '@core/auth/AuthProvider';
-import { ModuleProvider, useModules } from '@core/modules/registry';
+import { ModuleProvider, PUBLIC_ROUTES, useModules } from '@core/modules/registry';
 import { ToastProvider } from '@core/ui/Toast';
 import { ConfirmProvider } from '@core/ui/Modal';
 import { Spinner, EmptyState } from '@core/ui/primitives';
@@ -42,6 +42,13 @@ export function App() {
 
 function Gate() {
   const { ready, session, profile } = useAuth();
+  const { pathname } = useLocation();
+  // Páginas públicas: no piden PIN aunque no haya sesión
+  const pub = PUBLIC_ROUTES.find((r) => matchPath(r.path, pathname));
+  if (pub) {
+    const C = pub.component;
+    return <Suspense fallback={<div className="grid min-h-dvh place-items-center"><Spinner /></div>}><C /></Suspense>;
+  }
   if (!ready) return <div className="grid min-h-dvh place-items-center"><Spinner /></div>;
   if (!session || !profile) return <LoginPage />;
   return (

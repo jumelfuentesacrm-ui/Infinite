@@ -95,7 +95,7 @@ function ItemForm({ item, onClose }: { item: Partial<TemplateItem>; onClose: () 
           <Field label="Categoría"><Input value={v.category ?? ''} onChange={(e) => setV({ ...v, category: e.target.value })} placeholder="Seguridad" /></Field>
           <Field label="Orden"><Input type="number" value={v.position ?? ''} onChange={(e) => setV({ ...v, position: Number(e.target.value) })} /></Field>
         </FormGrid>
-        <Field label="Ayuda para el chofer"><Input value={v.help_text ?? ''} onChange={(e) => setV({ ...v, help_text: e.target.value })} /></Field>
+        <Field label="Ayuda para el operador"><Input value={v.help_text ?? ''} onChange={(e) => setV({ ...v, help_text: e.target.value })} /></Field>
         <Checkbox label="Crítico: si no es conforme, el vehículo queda NO APTO" checked={!!v.is_critical} onChange={(e) => setV({ ...v, is_critical: e.target.checked })} />
         <Checkbox label="Exigir foto cuando no es conforme" checked={!!v.photo_required_on_fail} onChange={(e) => setV({ ...v, photo_required_on_fail: e.target.checked })} />
       </div>

@@ -36,7 +36,7 @@ export const VEHICLE_TYPES: Record<string, string> = {
   utv: 'UTV', atv: 'ATV', truck: 'Camión', car: 'Auto', van: 'Van', equipment: 'Equipo', other: 'Otro',
 };
 export const ROLE_LABELS: Record<string, string> = {
-  admin: 'Administrador', supervisor: 'Supervisor', driver: 'Chofer / Operador', mechanic: 'Mecánico',
+  admin: 'Admin', supervisor: 'Supervisor', mechanic: 'Mecánico', driver: 'ATV/UTV',
 };
 
 export const modelLabel = (m?: Pick<VehicleModel, 'manufacturer' | 'model' | 'year'> | null) =>

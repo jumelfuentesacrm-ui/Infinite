@@ -1,4 +1,6 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { PUBLIC_ROUTES } from '@core/modules/registry';
 
 const DemoUsers = import.meta.env.VITE_DEMO === '1' ? lazy(() => import('../demo/DemoUI').then((m) => ({ default: m.DemoUsers }))) : null;
 import { Delete, Loader2, LogIn } from 'lucide-react';
@@ -52,7 +54,7 @@ export function LoginPage() {
   return (
     <div className="flex min-h-dvh flex-col bg-rail text-white">
       <div className="flex flex-1 flex-col items-center justify-center px-6 py-10">
-        <div className="mb-8 text-center">
+        <div className="fade-in mb-8 text-center">
           <div className="mx-auto mb-4 grid size-12 place-items-center rounded-xl bg-brand font-mono text-lg font-bold">{brand.shortName.slice(0, 2).toUpperCase()}</div>
           <h1 className="text-xl font-semibold">{brand.name}</h1>
           <p className="mt-1 text-sm text-rail-text">{brand.company}</p>
@@ -81,10 +83,10 @@ export function LoginPage() {
             <p className={cx('mb-4 h-5 text-center text-sm', error ? 'text-[#FFA8A8]' : 'text-rail-text')}>{error ?? 'Ingrese su PIN'}</p>
             <div className="grid grid-cols-3 gap-3">
               {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((d) => (
-                <button key={d} onClick={() => press(d)} className="h-16 rounded-xl bg-rail-2 font-mono text-2xl font-semibold active:bg-white/15">{d}</button>
+                <button key={d} onClick={() => press(d)} className="h-16 touch-manipulation rounded-xl bg-rail-2 font-mono text-2xl font-semibold transition-[background-color,transform] duration-150 hover:bg-white/10 active:scale-95 active:bg-white/15 sm:h-[72px]">{d}</button>
               ))}
               <button onClick={() => setPin((p) => p.slice(0, -1))} className="grid h-16 place-items-center rounded-xl text-rail-text active:bg-white/10" aria-label="Borrar"><Delete /></button>
-              <button onClick={() => press('0')} className="h-16 rounded-xl bg-rail-2 font-mono text-2xl font-semibold active:bg-white/15">0</button>
+              <button onClick={() => press('0')} className="h-16 touch-manipulation rounded-xl bg-rail-2 font-mono text-2xl font-semibold transition-[background-color,transform] duration-150 hover:bg-white/10 active:scale-95 active:bg-white/15 sm:h-[72px]">0</button>
               <button onClick={() => submit()} disabled={pin.length < 4 || busy} aria-label="Entrar"
                 className="grid h-16 place-items-center rounded-xl bg-brand disabled:opacity-40">{busy ? <Loader2 className="animate-spin" /> : <LogIn />}</button>
             </div>
@@ -93,7 +95,15 @@ export function LoginPage() {
         {DemoUsers && <Suspense fallback={null}><DemoUsers onPick={(c, p) => { setCode(c); setStep('pin'); setPin(p); setError(null); setBusy(true);
           login(c, p).catch((e) => { setError((e as Error).message); setPin(''); }).finally(() => setBusy(false)); }} /></Suspense>}
       </div>
-      <p className="safe-bottom pb-4 text-center text-xs text-white/30">¿Olvidó su PIN? Pida a su supervisor que lo restablezca.</p>
+      <div className="safe-bottom space-y-3 px-6 pb-4 text-center">
+        {/* Accesos públicos que aportan los módulos (ej. reporte en el taller) */}
+        {PUBLIC_ROUTES.filter((r) => r.label).map(({ path, label, icon: Icon }) => (
+          <Link key={path} to={path} className="mx-auto flex h-12 w-full max-w-xs items-center justify-center gap-2 rounded-lg border border-white/15 text-[15px] font-medium text-white transition-colors hover:bg-white/5 active:bg-white/10">
+            {Icon && <Icon className="size-4 text-brand" aria-hidden />}{label}
+          </Link>
+        ))}
+        <p className="text-xs text-white/40">¿Olvidó su PIN? Pida al administrador que lo restablezca.</p>
+      </div>
     </div>
   );
 }

@@ -36,7 +36,7 @@ function NavList({ items, onNavigate }: { items: NavItem[]; onNavigate?: () => v
               {list.map((n) => (
                 <li key={n.to}>
                   <NavLink to={n.to} onClick={onNavigate} end={n.to === '/m'}
-                    className={({ isActive }) => cx('flex items-center gap-2.5 rounded-md px-3 py-2 text-[14px] transition-colors',
+                    className={({ isActive }) => cx('flex min-h-10 items-center gap-2.5 rounded-md px-3 py-2 text-[14px] transition-colors pointer-coarse:min-h-11',
                       isActive ? 'bg-white/10 font-medium text-white' : 'text-rail-text hover:bg-white/5 hover:text-white')}>
                     {({ isActive }) => <><n.icon className={cx('size-[18px]', isActive && 'text-brand')} />{n.label}</>}
                   </NavLink>
@@ -56,6 +56,12 @@ export function AppShell({ home }: { home: string }) {
   const [drawer, setDrawer] = useState(false);
   const loc = useLocation();
   useEffect(() => { setDrawer(false); window.scrollTo(0, 0); }, [loc.pathname]);
+  useEffect(() => {
+    if (!drawer) return;
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setDrawer(false);
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [drawer]);
 
   const mobileItems = items.filter((i) => i.mobile && i.to !== home).slice(0, 3);
   const UserBlock = (
@@ -74,9 +80,10 @@ export function AppShell({ home }: { home: string }) {
   );
 
   return (
-    <div className="min-h-dvh md:pl-[240px]">
+    <div className="min-h-dvh lg:pl-[240px]">
+      <a href="#contenido" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded-md focus:bg-ink focus:px-3 focus:py-2 focus:text-white">Saltar al contenido</a>
       {/* Barra lateral (escritorio) */}
-      <aside className="fixed top-[var(--demo-h,0px)] bottom-0 left-0 z-30 hidden w-[240px] flex-col bg-rail md:flex">
+      <aside className="fixed top-[var(--demo-h,0px)] bottom-0 left-0 z-30 hidden w-[240px] flex-col bg-rail lg:flex">
         <div className="flex h-14 items-center gap-2.5 px-4">
           <div className="grid size-8 place-items-center rounded-md bg-brand font-mono text-xs font-bold text-white">{brand.shortName.slice(0, 2).toUpperCase()}</div>
           <div className="min-w-0">
@@ -89,9 +96,9 @@ export function AppShell({ home }: { home: string }) {
       </aside>
 
       {/* Barra superior */}
-      <header className="sticky top-0 z-20 flex h-14 items-center gap-2 border-b border-line bg-paper/90 px-3 backdrop-blur md:px-6">
-        <button className="-ml-1 rounded-md p-2 md:hidden" onClick={() => setDrawer(true)} aria-label="Menú"><Menu className="size-5" /></button>
-        <div className="truncate text-sm font-semibold md:hidden">{brand.name}</div>
+      <header className="sticky top-0 z-20 flex h-14 items-center gap-2 border-b border-line bg-paper/90 px-2 backdrop-blur sm:px-4 lg:px-6">
+        <button className="grid size-11 place-items-center rounded-md transition-colors hover:bg-sunken lg:hidden" onClick={() => setDrawer(true)} aria-label="Abrir menú" aria-expanded={drawer}><Menu className="size-5" /></button>
+        <div className="truncate text-[15px] font-semibold lg:hidden">{brand.name}</div>
         <div className="ml-auto flex items-center gap-1.5">
           <Slot name="shell.quick" props={{}} />
           <NotificationBell />
@@ -100,11 +107,11 @@ export function AppShell({ home }: { home: string }) {
 
       {/* Menú (teléfono) */}
       {drawer && (
-        <div className="fixed inset-0 z-40 bg-ink/50 md:hidden" onClick={() => setDrawer(false)}>
-          <div className="flex h-full w-[82%] max-w-[300px] flex-col bg-rail" onClick={(e) => e.stopPropagation()}>
+        <div className="backdrop-in fixed inset-0 z-40 bg-ink/50 lg:hidden" onClick={() => setDrawer(false)}>
+          <div role="dialog" aria-modal="true" aria-label="Menú" className="drawer-in flex h-full w-[82%] max-w-[300px] flex-col bg-rail pt-[env(safe-area-inset-top)]" onClick={(e) => e.stopPropagation()}>
             <div className="flex h-14 items-center justify-between px-4">
               <span className="text-sm font-semibold text-white">{brand.name}</span>
-              <button onClick={() => setDrawer(false)} className="text-rail-text" aria-label="Cerrar"><X className="size-5" /></button>
+              <button onClick={() => setDrawer(false)} className="-mr-2 grid size-11 place-items-center rounded-md text-rail-text hover:text-white" aria-label="Cerrar menú"><X className="size-5" /></button>
             </div>
             <div className="flex-1 overflow-y-auto px-2 py-2"><NavList items={items} onNavigate={() => setDrawer(false)} /></div>
             {UserBlock}
@@ -112,17 +119,17 @@ export function AppShell({ home }: { home: string }) {
         </div>
       )}
 
-      <main className="mx-auto max-w-[1400px] px-4 pt-5 pb-28 md:px-6 md:pb-10">
-        <Outlet />
+      <main id="contenido" className="mx-auto max-w-[1400px] px-4 pt-5 pb-28 sm:px-6 lg:pb-10">
+        <div key={loc.pathname} className="page-enter"><Outlet /></div>
       </main>
 
       {/* Barra inferior (teléfono) */}
-      <nav className="safe-bottom fixed inset-x-0 bottom-0 z-20 grid border-t border-line bg-panel pt-1.5 md:hidden"
+      <nav aria-label="Navegación principal" className="safe-bottom fixed inset-x-0 bottom-0 z-20 grid border-t border-line bg-panel/95 pt-1 backdrop-blur lg:hidden"
         style={{ gridTemplateColumns: `repeat(${mobileItems.length + 2}, minmax(0, 1fr))` }}>
         <BottomLink to={home} icon={Home} label="Inicio" />
         {mobileItems.map((i) => <BottomLink key={i.to} to={i.to} icon={i.icon} label={i.label} />)}
-        <button onClick={() => setDrawer(true)} className="flex flex-col items-center gap-0.5 py-1 text-[11px] text-muted">
-          <Menu className="size-5" />Más
+        <button onClick={() => setDrawer(true)} className="flex min-h-14 flex-col items-center justify-center gap-1 text-[11px] font-medium text-muted">
+          <span className="grid h-7 w-12 place-items-center rounded-full"><Menu className="size-5" /></span>Más
         </button>
       </nav>
     </div>
@@ -131,8 +138,11 @@ export function AppShell({ home }: { home: string }) {
 
 function BottomLink({ to, icon: Icon, label }: { to: string; icon: typeof Home; label: string }) {
   return (
-    <NavLink to={to} className={({ isActive }) => cx('flex flex-col items-center gap-0.5 py-1 text-[11px]', isActive ? 'text-brand' : 'text-muted')}>
-      <Icon className="size-5" /><span className="max-w-full truncate">{label}</span>
+    <NavLink to={to} className={({ isActive }) => cx('flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 px-1 text-[11px] font-medium transition-colors', isActive ? 'text-ink' : 'text-muted')}>
+      {({ isActive }) => <>
+        <span className={cx('grid h-7 w-12 place-items-center rounded-full transition-colors duration-200', isActive && 'bg-brand-soft text-brand')}><Icon className="size-5" /></span>
+        <span className="max-w-full truncate">{label}</span>
+      </>}
     </NavLink>
   );
 }

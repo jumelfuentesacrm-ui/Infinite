@@ -18,16 +18,16 @@ export function Modal({ open, onClose, title, children, footer, size = 'md' }: {
   }, [open, onClose]);
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-ink/40 md:items-center md:p-6" onMouseDown={onClose}>
+    <div className="backdrop-in fixed inset-0 z-50 flex items-end justify-center bg-ink/50 md:items-center md:p-6" onMouseDown={onClose}>
       <div ref={ref} role="dialog" aria-modal="true" onMouseDown={(e) => e.stopPropagation()}
-        className={cx('flex max-h-[92dvh] w-full flex-col rounded-t-2xl bg-panel shadow-pop md:rounded-xl',
+        aria-labelledby="modal-title" className={cx('sheet-in flex max-h-[92dvh] w-full flex-col rounded-t-2xl bg-panel shadow-pop md:rounded-xl',
           size === 'sm' && 'md:max-w-md', size === 'md' && 'md:max-w-xl', size === 'lg' && 'md:max-w-3xl')}>
         <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-3">
-          <h2 className="text-base font-semibold">{title}</h2>
-          <button onClick={onClose} className="-mr-1 rounded-md p-1.5 text-muted hover:bg-sunken" aria-label="Cerrar"><X className="size-5" /></button>
+          <h2 id="modal-title" className="text-base font-semibold">{title}</h2>
+          <button onClick={onClose} className="-mr-2 grid size-10 place-items-center rounded-md text-muted transition-colors hover:bg-sunken hover:text-ink" aria-label="Cerrar"><X className="size-5" /></button>
         </div>
         <div className="flex-1 overflow-y-auto px-4 py-4">{children}</div>
-        {footer && <div className="safe-bottom flex justify-end gap-2 border-t border-line px-4 pt-3">{footer}</div>}
+        {footer && <div className="safe-bottom flex flex-wrap justify-end gap-2 border-t border-line px-4 pt-3 [&>button]:flex-1 sm:[&>button]:flex-none">{footer}</div>}
       </div>
     </div>
   );

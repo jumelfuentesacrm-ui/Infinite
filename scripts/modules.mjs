@@ -125,7 +125,8 @@ function sync() {
     const files = fs.readdirSync(dbDir).filter((f) => f.endsWith('.sql')).sort();
     files.forEach((f, i) => {
       const version = (BigInt(m.migration) + BigInt(i)).toString();
-      wanted.set(`${version}_${m.id}${files.length > 1 ? '_' + f.replace('.sql', '') : ''}.sql`, path.join(dbDir, f));
+      // El primer archivo conserva el nombre corto: añadir archivos nunca renombra una migración ya aplicada
+      wanted.set(`${version}_${m.id}${i > 0 ? '_' + f.replace('.sql', '') : ''}.sql`, path.join(dbDir, f));
     });
   }
 

@@ -21,6 +21,8 @@ interface AuthCtx {
   profile: Profile | null;
   ready: boolean;
   permissions: Set<string>;
+  /** Administrador: único que modifica lo guardado y ve quién hizo cada cosa */
+  isAdmin: boolean;
   /** true si tiene el permiso (o cualquiera de la lista). Sin regla = true. */
   can: (rule?: PermRule) => boolean;
   login: (code: string, pin: string) => Promise<void>;
@@ -81,6 +83,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       profile: me.data?.profile ?? null,
       ready: sessionReady && (!uid || !me.isLoading),
       permissions,
+      isAdmin: me.data?.profile?.role_id === 'admin',
       can: (rule) => !rule || (Array.isArray(rule) ? rule.some((p) => permissions.has(p)) : permissions.has(rule)),
       login,
       logout,
@@ -99,4 +102,18 @@ export function useAuth() {
 /** Muestra el contenido solo si el usuario tiene el permiso. (El servidor valida igual.) */
 export function Can({ perm, children, fallback = null }: { perm?: PermRule; children: ReactNode; fallback?: ReactNode }) {
   return <>{useAuth().can(perm) ? children : fallback}</>;
+}
+
+/**
+ * Autoría: solo el admin ve quién hizo cada cosa. Los demás ven el trabajo realizado;
+ * su propio nombre aparece como "Usted".
+ *   const who = useWho();  who(row.employees?.full_name, row.performed_by)
+ */
+export function useWho() {
+  const { isAdmin, profile } = useAuth();
+  return useCallback((name: string | null | undefined, employeeId?: string | null) => {
+    if (isAdmin) return name ?? null;
+    if (employeeId && employeeId === profile?.id) return 'Usted';
+    return null;
+  }, [isAdmin, profile?.id]);
 }

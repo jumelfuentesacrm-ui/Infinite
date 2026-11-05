@@ -245,5 +245,50 @@ select pg_temp.login('CH01');
 select pg_temp.expect_error($$delete from vehicles$$, 'permission denied');
 do $$ begin assert (select count(*) from audit_log) = 0, 'chofer no lee auditoría'; end $$;
 
+-- ---------- 12. Solicitudes de cambio: solo el admin modifica lo guardado ----------
+select pg_temp.login('SUP1');
+select pg_temp.expect_error($$update vehicles set notes = 'directo' where unit_number = 'ATV-24'$$, 'Solo el administrador');
+select public.request_change('vehicles', (select id from vehicles where unit_number='ATV-24'), '{"notes":"Revisar frenos","unit_number":"ATV-24","id":"x"}', 'nota');
+select pg_temp.expect_error($$select public.request_change('vehicles', (select id from vehicles where unit_number='ATV-24'), '{"unit_number":"ATV-24"}')$$, 'No hay cambios');
+do $$ begin
+  assert (select changes from change_requests) = '{"notes":"Revisar frenos"}'::jsonb, 'solo campos cambiados';
+  assert (select notes from vehicles where unit_number='ATV-24') is distinct from 'Revisar frenos', 'aún no aplicado';
+end $$;
+select pg_temp.expect_error($$select public.decide_change_request((select id from change_requests limit 1), true)$$, 'Solo el administrador');
+select pg_temp.login('ADMIN');
+do $$ begin assert (select count(*) from notifications where type='change_request') >= 1, 'admin notificado'; end $$;
+select public.decide_change_request((select id from change_requests limit 1), true, 'ok');
+do $$ begin assert (select notes from vehicles where unit_number='ATV-24') = 'Revisar frenos', 'aplicado al aprobar'; end $$;
+update vehicles set notes = 'admin directo' where unit_number = 'ATV-24';
+-- Mecánico ve solo sus solicitudes
+select pg_temp.login('MEC1');
+do $$ begin assert (select count(*) from change_requests) = 0, 'mecánico no ve solicitudes ajenas'; end $$;
+
+-- ---------- 13. Costos de inventario solo para admin ----------
+select pg_temp.login('MEC1');
+select pg_temp.expect_error($$select unit_cost from inventory_items$$, 'permission denied');
+do $$ begin
+  assert (select count(*) from inventory_item_costs()) = 0, 'mecánico no recibe costos';
+  assert (select count(*) from inventory_items) > 0, 'pero sí ve lo que hay';
+  assert not exists (select 1 from inventory_consumption where cost is not null), 'consumo sin costo';
+end $$;
+select public.inventory_create_item('{"sku":"MEC-NEW","name":"Filtro nuevo","unit":"unidad","initial_quantity":2}');
+select pg_temp.login('ADMIN');
+do $$ begin assert (select count(*) from inventory_item_costs()) > 0, 'admin ve costos'; end $$;
+
+-- ---------- 14. Reporte público sin sesión ----------
+reset role;
+set role anon;
+do $$ begin assert (select count(*) from public_vehicle_units()) >= 1; end $$;
+select public.public_report_problem('atv-24', 'No prende, hace ruido al arrancar', 'Luis');
+select pg_temp.expect_error($$select public.public_report_problem('NOPE', 'algo pasó')$$, 'No existe la unidad');
+select pg_temp.expect_error($$select * from vehicles$$, 'permission denied');
+select pg_temp.expect_error($$select public.my_profile()$$, 'permission denied');
+reset role;
+do $$ begin
+  assert exists (select 1 from work_orders where source_type = 'public_report'), 'orden creada';
+  assert exists (select 1 from notifications where title like 'Reporte en taller%'), 'mecánicos notificados';
+end $$;
+
 reset role;
 select 'TODAS LAS PRUEBAS PASARON' as resultado;

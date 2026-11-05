@@ -27,6 +27,9 @@ export const INSTALLED_MODULES: ModuleManifest[] = Object.entries(moduleFiles)
   })
   .filter((m) => clientConfig.modules[m.id] !== false);
 
+/** Páginas públicas (sin sesión) de los módulos instalados en este build */
+export const PUBLIC_ROUTES = [...CORE_MODULES, ...INSTALLED_MODULES].flatMap((m) => m.publicRoutes ?? []);
+
 export interface ModuleState { id: string; name: string; enabled: boolean; trial_until: string | null; is_core: boolean }
 
 interface Registry {

@@ -4,6 +4,7 @@ import type { TimelineEvent } from '@core/data/shared';
 import { fmtDateTime, fmtMoney, fmtHours } from '@core/lib/format';
 import { EmptyState, cx } from './primitives';
 import { useModules } from '@core/modules/registry';
+import { useAuth, useWho } from '@core/auth/AuthProvider';
 
 const ICONS: Record<string, typeof Wrench> = {
   inspection: ClipboardCheck, repair: Wrench, work_order_opened: Wrench, diagnosis: Stethoscope, maintenance: Settings2,
@@ -13,6 +14,8 @@ const ICONS: Record<string, typeof Wrench> = {
 /** Historial cronológico de la vida del vehículo (alimentado por todos los módulos) */
 export function Timeline({ events }: { events: TimelineEvent[] }) {
   const { modules } = useModules();
+  const { isAdmin } = useAuth();
+  const who = useWho();
   const LINKS = Object.assign({}, ...modules.map((m) => m.entityLinks ?? {})) as Record<string, (id: string) => string>;
   if (!events.length) return <EmptyState title="Sin historial todavía" />;
   return (
@@ -31,9 +34,9 @@ export function Timeline({ events }: { events: TimelineEvent[] }) {
               <time className="num text-xs text-muted">{fmtDateTime(e.occurred_at)}</time>
             </div>
             <div className="mt-0.5 flex flex-wrap gap-x-3 text-[13px] text-muted">
-              {e.employees?.full_name && <span>{e.employees.full_name}</span>}
+              {who(e.employees?.full_name, e.employee_id) && <span>{who(e.employees?.full_name, e.employee_id)}</span>}
               {e.labor_hours != null && <span>{fmtHours(e.labor_hours)} de trabajo</span>}
-              {e.cost != null && <span>{fmtMoney(e.cost)}</span>}
+              {isAdmin && e.cost != null && <span>{fmtMoney(e.cost)}</span>}
             </div>
             {e.details?.diagnosis && <p className="mt-1 text-[13px] text-ink-2">{e.details.diagnosis}</p>}
             {parts.length > 0 && (

@@ -6,6 +6,7 @@ import { rpc, run, useAction, useData } from '@core/data/api';
 import { useLiveTable } from '@core/data/realtime';
 import { fleetKeys, modelLabel, useVehicle, useVehicleTimeline, VEHICLE_STATUS, VEHICLE_TYPES } from '@core/data/shared';
 import { Can, useAuth } from '@core/auth/AuthProvider';
+import { savedMsg, useSaveOrRequest } from '@core/data/changes';
 import { Slot, useSlotItems } from '@core/modules/Slot';
 import { Button, Card, KeyValue, PageHeader, QueryView, Section, Spinner, StatusBadge, Tabs, UnitTag } from '@core/ui/primitives';
 import { Field, FormGrid, Input, Select, Textarea } from '@core/ui/form';
@@ -61,8 +62,9 @@ function Summary({ vehicleId }: { vehicleId: string }) {
     run(supabase.from('vehicle_assignments').select('*, employees(full_name, employee_code)').eq('vehicle_id', vehicleId).is('ended_at', null)));
   const endAssign = useAction((id: string) => rpc('end_vehicle_assignment', { p_assignment: id }),
     { invalidate: [['vehicle_assignment', vehicleId], fleetKeys.vehicles], success: 'Asignación finalizada' });
-  const archive = useAction(() => run(supabase.from('vehicles').update({ archived_at: new Date().toISOString(), status: 'retired' }).eq('id', vehicleId)),
-    { invalidate: [fleetKeys.vehicles], success: 'Vehículo retirado y archivado' });
+  const { save: saveOrRequest } = useSaveOrRequest();
+  const archive = useAction(() => saveOrRequest('vehicles', vehicleId, { archived_at: new Date().toISOString(), status: 'retired' }),
+    { invalidate: [fleetKeys.vehicles], success: savedMsg('Vehículo retirado y archivado') });
   if (!v) return null;
   const m = v.vehicle_models!;
 
@@ -103,7 +105,7 @@ function Summary({ vehicleId }: { vehicleId: string }) {
               <div><div className="text-sm font-medium">{a.employees?.full_name}</div><div className="text-xs text-muted">Desde {fmtDate(a.started_at)}</div></div>
               {can('fleet.assign') && <Button size="sm" variant="ghost" icon={UserMinus} onClick={() => endAssign.mutate(a.id)}>Quitar</Button>}
             </div>
-          )) : <p className="text-sm text-muted">Sin chofer asignado</p>}
+          )) : <p className="text-sm text-muted">Sin operador asignado</p>}
         </Section>
         {can('fleet.delete') && v.status !== 'retired' && (
           <Button variant="ghost" icon={Archive} className="text-bad" onClick={async () => {

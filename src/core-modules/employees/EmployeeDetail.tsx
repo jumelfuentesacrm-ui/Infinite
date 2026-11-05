@@ -1,4 +1,5 @@
 import { Suspense, useState } from 'react';
+import { savedMsg, useSaveOrRequest } from '@core/data/changes';
 import { useParams } from 'react-router-dom';
 import { KeyRound, Pencil, Power } from 'lucide-react';
 import { supabase } from '@core/data/supabase';
@@ -74,21 +75,22 @@ export default function EmployeeDetail() {
 }
 
 function EditEmployee({ e, onClose }: { e: Employee; onClose: () => void }) {
-  const { can } = useAuth();
+  const { isAdmin } = useAuth();
+  const { save: saveOrRequest } = useSaveOrRequest();
   const f = useForm({ full_name: e.full_name, phone: e.phone ?? '', job_title: e.job_title ?? '', role_id: e.role_id, hired_at: e.hired_at ?? '', notes: e.notes ?? '' });
   const save = useAction(() => {
     const v = { ...f.values, phone: f.values.phone || null, job_title: f.values.job_title || null, hired_at: f.values.hired_at || null, notes: f.values.notes || null };
-    if (!can('employees.manage')) delete (v as Partial<typeof v>).role_id;
-    return run(supabase.from('employees').update(v).eq('id', e.id));
-  }, { invalidate: [fleetKeys.employees, ['employees', e.id]], success: 'Empleado actualizado', onSuccess: onClose });
+    if (!isAdmin) delete (v as Partial<typeof v>).role_id;
+    return saveOrRequest('employees', e.id, v, e as unknown as Record<string, unknown>);
+  }, { invalidate: [fleetKeys.employees, ['employees', e.id]], success: savedMsg('Empleado actualizado'), onSuccess: onClose });
   return (
     <Modal open onClose={onClose} title="Editar empleado"
       footer={<><Button onClick={onClose}>Cancelar</Button><Button variant="primary" loading={save.isPending} onClick={() => save.mutate()}>Guardar</Button></>}>
       <div className="space-y-4">
         <FormGrid>
           <Field label="Nombre completo"><Input {...f.bind('full_name')} /></Field>
-          <Field label="Rol" hint={!can('employees.manage') ? 'Requiere permiso de administración' : undefined}>
-            <Select {...f.bind('role_id')} disabled={!can('employees.manage')} options={Object.entries(ROLE_LABELS).map(([value, label]) => ({ value, label }))} />
+          <Field label="Rol" hint={!isAdmin ? 'Solo el administrador cambia el rol' : undefined}>
+            <Select {...f.bind('role_id')} disabled={!isAdmin} options={Object.entries(ROLE_LABELS).map(([value, label]) => ({ value, label }))} />
           </Field>
           <Field label="Teléfono"><Input {...f.bind('phone')} /></Field>
           <Field label="Puesto"><Input {...f.bind('job_title')} /></Field>

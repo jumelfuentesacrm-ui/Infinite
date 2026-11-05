@@ -16,10 +16,12 @@ export interface Column<T> {
   /** En teléfono: 'title' = encabezado de la tarjeta, 'hide' = oculto */
   mobile?: 'title' | 'hide';
   sortable?: boolean;
+  /** Solo visible para el administrador (autoría, costos) */
+  admin?: boolean;
 }
 
 export function DataTable<T extends object>({
-  rows, columns, loading, error, onRowClick, search = true, toolbar, empty, exportName, pageSize = 50, rowKey,
+  rows, columns: allColumns, loading, error, onRowClick, search = true, toolbar, empty, exportName, pageSize = 50, rowKey,
 }: {
   rows: T[] | undefined;
   columns: Column<T>[];
@@ -34,7 +36,8 @@ export function DataTable<T extends object>({
   pageSize?: number;
   rowKey?: (row: T) => string;
 }) {
-  const { can } = useAuth();
+  const { can, isAdmin } = useAuth();
+  const columns = useMemo(() => allColumns.filter((c) => !c.admin || isAdmin), [allColumns, isAdmin]);
   const { isActive } = useModules();
   // Con el módulo de Reportes instalado, exportar requiere el permiso reports.export
   const canExport = !!exportName && (!isActive('reports') || can('reports.export'));

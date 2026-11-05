@@ -11,6 +11,8 @@ export interface ClientConfig {
     timezone: string;
   };
   modules: Record<string, boolean>;
+  /** Opcional: limita el dashboard a estos widgets (por id), en este orden */
+  dashboard?: { widgets?: string[] };
 }
 
 export const clientConfig = raw as ClientConfig;

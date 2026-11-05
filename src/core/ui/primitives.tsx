@@ -6,7 +6,7 @@ export const cx = (...c: (string | false | null | undefined)[]) => c.filter(Bool
 
 // ---------------------------------------------------------------- Botones
 type BtnVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'dark';
-const btnBase = 'inline-flex items-center justify-center gap-1.5 rounded-md font-medium transition-colors disabled:opacity-50 disabled:pointer-events-none whitespace-nowrap select-none';
+const btnBase = 'inline-flex items-center justify-center gap-1.5 rounded-md font-medium transition-[background-color,border-color,color,filter,transform] duration-150 ease-out active:scale-[0.97] disabled:opacity-50 disabled:pointer-events-none whitespace-nowrap select-none';
 const btnVariants: Record<BtnVariant, string> = {
   primary: 'bg-brand text-brand-ink hover:brightness-95 active:brightness-90',
   secondary: 'bg-panel text-ink border border-line-strong hover:bg-sunken',
@@ -14,7 +14,8 @@ const btnVariants: Record<BtnVariant, string> = {
   danger: 'bg-bad text-white hover:brightness-95',
   dark: 'bg-ink text-white hover:bg-ink-2',
 };
-const btnSizes = { sm: 'h-8 px-2.5 text-[13px]', md: 'h-10 px-3.5 text-sm', lg: 'h-12 px-5 text-base' };
+// En pantallas táctiles los botones crecen para cumplir el mínimo de 44px
+const btnSizes = { sm: 'h-8 px-2.5 text-[13px] pointer-coarse:h-10 pointer-coarse:px-3', md: 'h-10 px-3.5 text-sm pointer-coarse:h-11', lg: 'h-12 px-5 text-base' };
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: BtnVariant;
@@ -179,7 +180,7 @@ export function StatCard({ label, value, tone, icon: Icon, to, hint }: {
 }) {
   const body = (
     <div className={cx('group relative h-full overflow-hidden rounded-card border border-line bg-panel p-3.5 shadow-card',
-      to && 'transition-colors hover:border-line-strong')}>
+      to && 'transition-[border-color,box-shadow] duration-150 hover:border-line-strong')}>
       {tone && <span className={cx('absolute inset-y-0 left-0 w-[3px]', dotCls[tone])} />}
       <div className="flex items-start justify-between gap-2">
         <span className="text-[12px] font-medium leading-tight text-muted">{label}</span>
@@ -201,7 +202,7 @@ export function Tabs<T extends string>({ tabs, value, onChange }: {
       <div className="flex gap-1">
         {tabs.map((t) => (
           <button key={t.id} onClick={() => onChange(t.id)}
-            className={cx('-mb-px whitespace-nowrap border-b-2 px-3 py-2 text-sm font-medium transition-colors',
+            className={cx('-mb-px min-h-11 whitespace-nowrap border-b-2 px-3 py-2 text-sm font-medium transition-colors',
               value === t.id ? 'border-brand text-ink' : 'border-transparent text-muted hover:text-ink')}>
             {t.label}{t.count != null && <span className="num ml-1.5 text-xs text-faint">{t.count}</span>}
           </button>
@@ -219,7 +220,8 @@ export function Segmented<T extends string>({ options, value, onChange }: {
     <div className="inline-flex rounded-md border border-line-strong bg-panel p-0.5">
       {options.map((o) => (
         <button key={o.id} onClick={() => onChange(o.id)}
-          className={cx('rounded-[5px] px-2.5 py-1 text-[13px] font-medium', value === o.id ? 'bg-ink text-white' : 'text-ink-2 hover:bg-sunken')}>
+          aria-pressed={value === o.id}
+          className={cx('rounded-[5px] px-2.5 py-1 text-[13px] font-medium whitespace-nowrap transition-colors duration-150 pointer-coarse:min-h-9 pointer-coarse:px-3', value === o.id ? 'bg-ink text-white' : 'text-ink-2 hover:bg-sunken')}>
           {o.label}
         </button>
       ))}
