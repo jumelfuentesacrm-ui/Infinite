@@ -1,0 +1,14 @@
+{
+  "id": "workorders",
+  "name": "Taller",
+  "description": "Órdenes de trabajo, diagnósticos, mano de obra y piezas.",
+  "version": "1.0.0",
+  "dependsOn": [],
+  "integratesWith": [
+    "inventory",
+    "parts_catalog",
+    "inspections",
+    "accidents"
+  ],
+  "migration": "20260101000190"
+}

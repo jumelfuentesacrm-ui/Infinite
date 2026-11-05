@@ -1,120 +1,71 @@
-# INFINITE — sitio web + bandeja de solicitudes
+# Fleet Ops — Sistema modular de flota, operaciones y taller
 
-Sitio de una página con formulario de contacto y un panel de administración
-donde llegan todas las solicitudes.
+PWA (React + Vite + Supabase) para administrar vehículos de trabajo, UTVs y ATVs:
+flota, empleados, inspecciones, operaciones, ponches, GPS, accidentes, combustible,
+mantenimiento preventivo, taller, inventario, catálogo OEM, documentos, notificaciones y reportes.
+
+## Arquitectura: núcleo + módulos "lego"
 
 ```
-index.html            el sitio
-admin.html            la bandeja de solicitudes
-config.js             ← el único archivo que editas
-supabase-setup.sql    para crear la base de datos
-vercel.json           configuración de despliegue
+src/core/            Kit compartido: auth PIN, permisos, datos, UI, registro de módulos
+src/core-modules/    Núcleo SIEMPRE instalado: dashboard, flota, empleados, notificaciones, panel móvil, configuración
+modules/<id>/        Cada módulo opcional, autocontenido:
+  module.json          id, nombre, dependencias, versión de migración
+  db/schema.sql        tablas, RLS, funciones, permisos y alertas del módulo
+  ui/index.tsx         manifiesto: rutas, menú, accesos móviles, widgets, slots, reportes, ajustes
+  functions/           Edge Functions propias (opcional, ej. gps/gps-ingest)
+supabase/core/       SQL del núcleo
+supabase/migrations/ GENERADO por `npm run modules sync` (no editar)
+client.config.json   marca del cliente y módulos activos
 ```
 
----
-
-## Funciona ahora mismo, sin instalar nada
-
-Abre `index.html` en cualquier navegador. El formulario ya:
-
-- valida los campos
-- envía por **WhatsApp** al (787) 356-2397
-- o abre tu correo con el mensaje ya redactado
-
-Abre `admin.html` y entra con cualquier email para ver la bandeja
-en modo demostración.
-
----
-
-## Para guardar las solicitudes de verdad (30 minutos)
-
-### 1. Supabase — la base de datos
-
-1. Entra a [supabase.com](https://supabase.com) → **New project** (plan gratis)
-2. Ve a **SQL Editor** → pega el contenido de `supabase-setup.sql` → **Run**
-3. Ve a **Authentication → Users → Add user**
-   Crea tu usuario admin con email y contraseña. Con ese entras al panel.
-4. Ve a **Settings → API** y copia:
-   - **Project URL**
-   - **anon public** key
-5. Pégalas en `config.js`:
-
-```js
-SUPABASE_URL:      'https://xxxxx.supabase.co',
-SUPABASE_ANON_KEY: 'eyJhbGci...',
-```
-
-Y aprovecha para poner tu correo real en `CONTACT_EMAIL`.
-
-> La llave `anon` es pública, va en el navegador a propósito. Lo que protege
-> los datos son las políticas del SQL: cualquiera puede **enviar** el formulario,
-> pero solo alguien con sesión iniciada puede **ver, editar o borrar**.
-
-### 2. GitHub — guardar el código
-
-```bash
-cd carpeta-del-proyecto
-git init
-git add .
-git commit -m "INFINITE website"
-git branch -M main
-git remote add origin https://github.com/TU-USUARIO/infinite-website.git
-git push -u origin main
-```
-
-Si prefieres sin comandos: en github.com haz **New repository**,
-y arrastra los archivos a la página.
-
-### 3. Vercel — publicar
-
-1. [vercel.com](https://vercel.com) → **Add New → Project**
-2. Importa el repositorio de GitHub
-3. Framework preset: **Other**. No hay que compilar nada.
-4. **Deploy**
-
-Listo:
-
-- Sitio: `https://tu-proyecto.vercel.app`
-- Panel: `https://tu-proyecto.vercel.app/admin`
-
-Cada vez que subas un cambio a GitHub, Vercel lo publica solo.
-
----
-
-## El panel de admin
-
-- **Bandeja** con todas las solicitudes, la más reciente arriba
-- **Contadores**: total, nuevos, en proceso, cerrados
-- **Buscador** por nombre, negocio, email o servicio
-- **Filtros** por estado
-- Toca una solicitud para abrirla:
-  - editar cualquier campo
-  - cambiar el estado
-  - **notas internas** ("llamada hecha", "propuesta enviada")
-  - **Guardar** / **Borrar**
-  - botones directos de **WhatsApp** y **Responder por correo**
-- **Exportar CSV** para abrir todo en Excel
-
----
-
-## ¿Hay algo más simple que Supabase?
-
-Sí, dos caminos, según qué te importe más:
-
-| Opción | Ventaja | Desventaja |
+| Módulo | id | Depende de |
 |---|---|---|
-| **Supabase** (lo que está montado) | Panel propio dentro de tu web, notas, editar, borrar. Se ve profesional. | Hay que crear el proyecto una vez |
-| **Formspree** | 5 minutos, cero configuración | La bandeja es la de ellos: no hay notas ni edición |
-| **Google Sheets** | Todo cae en una hoja de cálculo que ya sabes usar | Hay que pegar un script en Apps Script; no hay panel bonito |
+| Inspecciones | `inspections` | — |
+| Operaciones (calendario) | `operations` | — |
+| Ponches | `timeclock` | — |
+| GPS | `gps` | — |
+| Accidentes | `accidents` | — |
+| Combustible | `fuel` | — |
+| Mantenimiento | `maintenance` | — |
+| Inventario | `inventory` | — |
+| Taller / órdenes de trabajo | `workorders` | — (se integra con inventario y catálogo si existen) |
+| Catálogo OEM | `parts_catalog` | `inventory` |
+| Documentos | `documents` | — |
+| Reportes | `reports` | — |
 
-Si algún día quieres cambiar, solo se toca la parte del envío en `index.html`
-y `config.js`. El diseño no se entera.
+### Reglas que evitan el espagueti (se validan en cada build)
+1. **Un módulo nunca importa otro módulo.** Solo `@core/*` y paquetes npm.
+2. **El núcleo nunca importa módulos.** Los descubre por carpeta (`import.meta.glob`).
+3. Para integrarse se usan **slots** (`src/core/modules/slots.ts`): el Taller muestra
+   `<Slot name="workorder.parts"/>`; Inventario y Catálogo aportan sus selectores. Si un módulo
+   no está, el slot queda vacío y nada se rompe.
+4. En la base de datos, los módulos publican su historial en `vehicle_timeline`, sus alertas en
+   `alert_jobs` y sus notificaciones con `app.notify()`. Integraciones entre módulos opcionales son
+   "blandas" (se comprueba en tiempo de ejecución si la otra función existe).
 
----
+`npm run modules check` falla si alguien rompe estas reglas.
 
-## Cambiar contenido
+### Tres formas de quitar funciones a un cliente
+| Situación | Cómo |
+|---|---|
+| No lo compró | No se copia: `npm run modules new-client ../cliente inspections,fuel` |
+| Ocultarlo en su build | `client.config.json` → `"fuel": false` |
+| Apagarlo o darlo a prueba en caliente | Configuración › Módulos (desactivar o fecha fin de prueba). El servidor deja de aceptar escrituras; **los datos se conservan** y se pueden consultar |
 
-Todo el texto está en `index.html`, en español y ordenado por secciones.
-Para el video: busca `video-frame` y cambia el `alert` por un `<iframe>` de
-YouTube o un `<video>`. Para las fotos del equipo: busca `.member .photo`
-y cambia el `background-image` por la foto real.
+## Seguridad
+- Acceso con código de empleado + PIN (4–8 dígitos, bcrypt, bloqueo tras intentos fallidos) vía Edge Function `pin-login`.
+- RBAC granular: permisos por módulo y acción, por rol (Configuración › Roles) y excepciones por empleado.
+- **Todo se valida en Postgres**: RLS en cada tabla y funciones `security definer` con `app.require_perm()`. Ocultar botones es solo comodidad.
+- Operaciones críticas en una sola transacción (inventario con bloqueo de fila, órdenes, inspecciones, ponches).
+- Historial inmutable: sin `DELETE` para usuarios; archivado lógico; auditoría con valor anterior/nuevo de cada cambio.
+
+## Comandos
+```bash
+npm run dev               # desarrollo
+npm run build             # valida módulos + tipos + build de producción
+npm run modules list      # módulos instalados
+npm run modules sync      # genera supabase/migrations y supabase/functions
+npm run db:test           # aplica todo en un Postgres local y corre las pruebas de flujo
+```
+Ver **SETUP.md** para instalar un cliente y **MODULES.md** para crear un módulo nuevo.

@@ -1,0 +1,25 @@
+{
+  "client": {
+    "name": "Control de Flota",
+    "shortName": "Flota",
+    "company": "Mi Compañía",
+    "primaryColor": "#E8590C",
+    "locale": "es-PR",
+    "currency": "USD",
+    "timezone": "America/Puerto_Rico"
+  },
+  "modules": {
+    "accidents": true,
+    "documents": true,
+    "fuel": true,
+    "gps": true,
+    "inspections": true,
+    "inventory": true,
+    "maintenance": true,
+    "operations": true,
+    "parts_catalog": true,
+    "reports": true,
+    "timeclock": true,
+    "workorders": true
+  }
+}

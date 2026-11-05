@@ -1,0 +1,9 @@
+{
+  "id": "timeclock",
+  "name": "Ponches",
+  "description": "Entradas, salidas y descansos con GPS; correcciones con aprobación.",
+  "version": "1.0.0",
+  "dependsOn": [],
+  "integratesWith": [],
+  "migration": "20260101000130"
+}

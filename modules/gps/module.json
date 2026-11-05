@@ -1,0 +1,9 @@
+{
+  "id": "gps",
+  "name": "GPS",
+  "description": "Mapa en vivo, historial de ubicaciones e ingesta desde rastreadores externos.",
+  "version": "1.0.0",
+  "dependsOn": [],
+  "integratesWith": [],
+  "migration": "20260101000140"
+}

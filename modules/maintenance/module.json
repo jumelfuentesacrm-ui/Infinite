@@ -1,0 +1,11 @@
+{
+  "id": "maintenance",
+  "name": "Mantenimiento",
+  "description": "Mantenimiento preventivo por horas de motor, fecha o millaje.",
+  "version": "1.0.0",
+  "dependsOn": [],
+  "integratesWith": [
+    "inventory"
+  ],
+  "migration": "20260101000170"
+}

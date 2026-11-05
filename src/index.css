@@ -1,0 +1,78 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap');
+@import 'tailwindcss';
+@source "../modules";
+
+/*
+  Lenguaje visual: "tablero de taller". Papel cálido, tinta grafito, naranja de
+  seguridad como acento, números de unidad y de pieza en monoespaciada como
+  placas grabadas. Densidad alta y líneas finas para lectura rápida.
+*/
+@theme {
+  --font-sans: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+
+  --color-paper: #F4F3EF;
+  --color-panel: #FFFFFF;
+  --color-sunken: #EBE9E3;
+  --color-line: #DEDBD3;
+  --color-line-strong: #C9C5BA;
+  --color-ink: #15181C;
+  --color-ink-2: #3B4048;
+  --color-muted: #6B6F76;
+  --color-faint: #9A9DA2;
+
+  --color-brand: var(--brand, #E8590C);
+  --color-brand-ink: #FFFFFF;
+  --color-brand-soft: color-mix(in oklab, var(--brand, #E8590C) 12%, white);
+
+  --color-ok: #2B8A3E;
+  --color-ok-soft: #E6F4E9;
+  --color-warn: #B35C00;
+  --color-warn-soft: #FFF1DB;
+  --color-bad: #C92A2A;
+  --color-bad-soft: #FDE8E8;
+  --color-info: #1864AB;
+  --color-info-soft: #E3EFFB;
+  --color-idle: #5C636E;
+  --color-idle-soft: #ECEDEF;
+
+  --color-rail: #15181C;
+  --color-rail-2: #22262C;
+  --color-rail-text: #C2C6CC;
+
+  --radius-card: 10px;
+  --shadow-card: 0 1px 0 rgba(21, 24, 28, 0.04), 0 1px 3px rgba(21, 24, 28, 0.06);
+  --shadow-pop: 0 12px 32px -8px rgba(21, 24, 28, 0.28);
+}
+
+@layer base {
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    @apply bg-paper text-ink font-sans antialiased;
+    font-feature-settings: 'tnum' 1, 'cv01' 1;
+  }
+  :focus-visible { outline: 2px solid var(--color-brand); outline-offset: 2px; }
+  input, select, textarea, button { font: inherit; }
+  ::selection { background: var(--color-brand-soft); }
+}
+
+@layer components {
+  .tag-unit {
+    @apply inline-flex items-center rounded-[4px] border border-line-strong bg-panel px-1.5 py-px font-mono text-[12px] font-semibold tracking-wide text-ink;
+    box-shadow: inset 0 -1px 0 var(--color-line);
+  }
+  .num { font-family: var(--font-mono); font-feature-settings: 'tnum' 1; }
+  .hairline { border-color: var(--color-line); }
+  .safe-bottom { padding-bottom: max(0.75rem, env(safe-area-inset-bottom)); }
+  .scroll-x { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+}
+
+/* Leaflet */
+.leaflet-container { font: inherit; border-radius: var(--radius-card); }
+.leaflet-container a { color: inherit; }
+
+@media print {
+  aside, nav, header, .no-print { display: none !important; }
+  main { padding: 0 !important; }
+  body { background: white; }
+}

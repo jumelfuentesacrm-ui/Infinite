@@ -1,0 +1,24 @@
+# Configuración del proyecto Supabase (CLI). project_id se completa con `supabase link`.
+project_id = "fleet-ops"
+
+[api]
+schemas = ["public"]
+max_rows = 2000
+
+[auth]
+# Los empleados entran con código + PIN (Edge Function pin-login); no hay registro público.
+enable_signup = false
+jwt_expiry = 43200
+
+[auth.email]
+enable_signup = false
+
+# Funciones que validan su propio acceso (PIN, token de dispositivo o secreto de cron)
+[functions.pin-login]
+verify_jwt = false
+
+[functions.gps-ingest]
+verify_jwt = false
+
+[functions.run-alerts]
+verify_jwt = false
