@@ -1,8 +1,9 @@
-import { Wrench, MessageSquareWarning } from 'lucide-react';
+import { Inbox, Wrench, MessageSquareWarning } from 'lucide-react';
 import { contribute, defineModule, lazyExport } from '@core/modules/types';
 
 const pages = () => import('./pages');
 const create = () => import('./CreateWorkOrder');
+const reports = () => import('./ShopReports');
 
 export default defineModule({
   id: 'workorders',
@@ -10,12 +11,16 @@ export default defineModule({
   icon: Wrench,
   routes: [
     { path: '/taller', component: lazyExport(pages, 'ShopHome'), perm: 'workorders.view' },
+    { path: '/taller/reportes', component: lazyExport(reports, 'ShopReportsPage'), perm: 'workorders.view' },
     { path: '/taller/:id', component: lazyExport(pages, 'WorkOrderDetail'), perm: ['workorders.view', 'workorders.report'] },
     { path: '/m/problema', component: lazyExport(create, 'ReportProblem'), perm: 'workorders.report' },
   ],
   // Sin PIN: quien deja una unidad en el taller reporta qué le pasó (ver db/zz_public_report.sql)
   publicRoutes: [{ path: '/reportar', label: 'Reportar problema sin PIN', icon: Wrench, component: lazyExport(() => import('./PublicReport'), 'PublicReport') }],
-  nav: [{ to: '/taller', label: 'Órdenes de trabajo', icon: Wrench, perm: 'workorders.view', group: 'taller', order: 0, mobile: true }],
+  nav: [
+    { to: '/taller/reportes', label: 'Reportes recibidos', icon: Inbox, perm: 'workorders.view', group: 'taller', order: 0, mobile: true },
+    { to: '/taller', label: 'Órdenes de trabajo', icon: Wrench, perm: 'workorders.view', group: 'taller', order: 1, mobile: true },
+  ],
   fieldActions: [{ to: '/m/problema', label: 'Reportar problema', description: 'Falla mecánica', icon: MessageSquareWarning, perm: 'workorders.report', order: 5 }],
   dashboard: [
     { id: 'wo-kpi', component: lazyExport(pages, 'OpenOrdersKpi'), size: 'kpi', perm: 'workorders.view', order: 7 },
@@ -31,5 +36,5 @@ export default defineModule({
     { id: 'mechanics', title: 'Actividad de los mecánicos', description: 'Órdenes, horas y mano de obra por mecánico y mes', perm: 'settings.manage', component: lazyExport(pages, 'MechanicActivityReport') },
     { id: 'repairs', title: 'Reparaciones por vehículo', description: 'Órdenes, horas y costo acumulado por unidad', perm: 'inventory.view_costs', component: lazyExport(pages, 'RepairsByVehicleReport') },
   ],
-  entityLinks: { work_order: (id) => `/taller/${id}` },
+  entityLinks: { work_order: (id) => `/taller/${id}`, shop_report: () => '/taller/reportes' },
 });

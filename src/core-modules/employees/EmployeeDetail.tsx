@@ -1,4 +1,5 @@
 import { Suspense, useState } from 'react';
+import { EmployeeHistory } from '@core/ui/EmployeeHistory';
 import { savedMsg, useSaveOrRequest } from '@core/data/changes';
 import { useParams } from 'react-router-dom';
 import { KeyRound, Pencil, Power } from 'lucide-react';
@@ -18,7 +19,7 @@ export default function EmployeeDetail() {
   const { id = '' } = useParams();
   const q = useData(['employees', id], () => run(supabase.from('employees').select('*').eq('id', id).single()) as Promise<Employee>);
   const tabs = useSlotItems('employee.tabs');
-  const { can, profile } = useAuth();
+  const { can, profile, isAdmin } = useAuth();
   const confirm = useConfirm();
   const [tab, setTab] = useState('info');
   const [modal, setModal] = useState<null | 'edit' | 'pin'>(null);
@@ -47,9 +48,11 @@ export default function EmployeeDetail() {
               </>} />
             <Tabs value={tab} onChange={setTab} tabs={[
               { id: 'info', label: 'Expediente' },
+              ...(isAdmin || e.id === profile?.id ? [{ id: 'history', label: 'Historial' }] : []),
               ...(can('employees.manage') ? [{ id: 'perms', label: 'Permisos' }] : []),
               ...tabs.map((t) => ({ id: t.id, label: t.label ?? t.id })),
             ]} />
+            {tab === 'history' && <EmployeeHistory employeeId={e.id} />}
             {tab === 'info' && (
               <Section title="Datos">
                 <KeyValue items={[

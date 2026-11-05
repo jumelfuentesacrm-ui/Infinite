@@ -138,7 +138,7 @@ export function AppShell({ home }: { home: string }) {
 
 function BottomLink({ to, icon: Icon, label }: { to: string; icon: typeof Home; label: string }) {
   return (
-    <NavLink to={to} className={({ isActive }) => cx('flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 px-1 text-[11px] font-medium transition-colors', isActive ? 'text-ink' : 'text-muted')}>
+    <NavLink to={to} end className={({ isActive }) => cx('flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 px-1 text-[11px] font-medium transition-colors', isActive ? 'text-ink' : 'text-muted')}>
       {({ isActive }) => <>
         <span className={cx('grid h-7 w-12 place-items-center rounded-full transition-colors duration-200', isActive && 'bg-brand-soft text-brand')}><Icon className="size-5" /></span>
         <span className="max-w-full truncate">{label}</span>

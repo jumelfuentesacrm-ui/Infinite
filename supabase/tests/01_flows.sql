@@ -286,9 +286,31 @@ select pg_temp.expect_error($$select * from vehicles$$, 'permission denied');
 select pg_temp.expect_error($$select public.my_profile()$$, 'permission denied');
 reset role;
 do $$ begin
-  assert exists (select 1 from work_orders where source_type = 'public_report'), 'orden creada';
-  assert exists (select 1 from notifications where title like 'Reporte en taller%'), 'mecánicos notificados';
+  assert (select status from public_reports order by created_at desc limit 1) = 'pending', 'llega como solicitud pendiente';
+  assert exists (select 1 from notifications where title like 'Nuevo reporte%'), 'mecánicos notificados';
+  assert exists (select 1 from vehicle_timeline where event_type = 'shop_report_received'), 'en historial de la máquina';
 end $$;
+
+-- ---------- 15. Bandeja del mecánico: aceptar y solucionado ----------
+select pg_temp.login('MEC1');
+do $$ begin assert (select count(*) from public_reports where status = 'pending') >= 1, 'mecánico ve la bandeja'; end $$;
+select public.shop_report_accept((select id from public_reports where status = 'pending' order by created_at desc limit 1));
+select pg_temp.expect_error($$select public.shop_report_accept((select id from public_reports where status = 'accepted' limit 1))$$, 'ya fue tomado');
+select public.shop_report_solve((select id from public_reports where status = 'accepted' limit 1), 'Se cambió la bujía', 0.5);
+do $$ begin
+  assert (select status from public_reports order by created_at desc limit 1) = 'solved', 'cerrado';
+  assert (select count(*) from employee_history() where event_type in ('shop_report_accepted','shop_report_solved')) = 2, 'en historial del mecánico';
+end $$;
+select pg_temp.expect_error($$select * from employee_history((select id from employees where employee_code = 'ADMIN'))$$, 'Solo el administrador');
+reset role;
+set role anon;
+select public.public_report_problem('ATV-24', 'Llanta baja');
+reset role;
+select pg_temp.login('MEC1');
+select public.shop_report_to_work_order((select id from public_reports where status = 'pending' limit 1));
+do $$ begin assert exists (select 1 from work_orders where source_type = 'public_report' and status = 'pending_diagnosis'), 'pasó a orden'; end $$;
+select pg_temp.login('ADMIN');
+do $$ begin assert (select count(*) from employee_history((select id from employees where employee_code = 'MEC1'))) >= 3, 'admin ve historial del mecánico'; end $$;
 
 reset role;
 select 'TODAS LAS PRUEBAS PASARON' as resultado;

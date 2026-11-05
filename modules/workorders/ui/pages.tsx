@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { ShopReportsInbox } from './ShopReports';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { CheckCircle2, ClipboardList, Clock, Lock, Package, Play, Plus, Stethoscope, UserCog, Wrench, X, Check } from 'lucide-react';
 import { supabase } from '@core/data/supabase';
@@ -48,6 +49,7 @@ export function ShopHome() {
   return (
     <>
       <PageHeader title="Taller" subtitle="Órdenes de trabajo" actions={<Can perm="workorders.create"><Button variant="primary" icon={Plus} onClick={() => setCreating(true)}>Nueva orden</Button></Can>} />
+      <ShopReportsInbox />
       <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
         <StatCard label="Abiertas" value={(q.data ?? []).filter((w) => OPEN.includes(w.status)).length} icon={ClipboardList} />
         <StatCard label="Sin asignar" value={(q.data ?? []).filter((w) => OPEN.includes(w.status) && !w.assigned_mechanic_id).length} tone="brand" />

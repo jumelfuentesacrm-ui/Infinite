@@ -37,8 +37,8 @@ export function PublicReport() {
     if (!valid || state.status === 'sending') return;
     setState({ status: 'sending' });
     try {
-      const r = await rpc<{ order_number: string; unit_number: string }>('public_report_problem', { p_unit: unit.trim(), p_description: desc.trim(), p_name: name.trim() || null });
-      setState({ status: 'done', order: r.order_number, msg: r.unit_number });
+      const r = await rpc<{ order_number: string | null; unit_number: string }>('public_report_problem', { p_unit: unit.trim(), p_description: desc.trim(), p_name: name.trim() || null });
+      setState({ status: 'done', order: r.order_number ?? undefined, msg: r.unit_number });
     } catch (err) {
       setState({ status: 'error', msg: (err as Error).message || 'No se pudo enviar. Intente de nuevo.' });
     }
@@ -66,7 +66,8 @@ export function PublicReport() {
             <div className="mx-auto mb-4 grid size-14 place-items-center rounded-full bg-ok-soft text-ok"><CheckCircle2 className="size-7" /></div>
             <h1 className="text-xl font-semibold">Reporte enviado</h1>
             <p className="mt-2 text-sm text-muted">El taller ya fue avisado sobre la unidad <span className="tag-unit">{state.msg}</span></p>
-            <p className="mt-1 text-sm text-muted">Número de orden <span className="num font-semibold text-ink">{state.order}</span></p>
+            {state.order && <p className="mt-1 text-sm text-muted">Número de orden <span className="num font-semibold text-ink">{state.order}</span></p>}
+            <p className="mt-1 text-sm text-muted">Un mecánico lo va a revisar.</p>
             <button onClick={reset} className="mt-6 inline-flex h-12 w-full items-center justify-center rounded-lg bg-ink text-[15px] font-medium text-white transition-colors hover:bg-ink-2 active:scale-[0.99]">
               Reportar otra unidad
             </button>

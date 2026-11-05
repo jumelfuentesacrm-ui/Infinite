@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { ClipboardCheck, Wrench, Fuel, ShieldAlert, FileText, Gauge, Settings2, Stethoscope, CircleDot } from 'lucide-react';
+import { ClipboardCheck, Wrench, Fuel, ShieldAlert, FileText, Gauge, Settings2, Stethoscope, CircleDot, Inbox, Hand, CheckCircle2 } from 'lucide-react';
 import type { TimelineEvent } from '@core/data/shared';
 import { fmtDateTime, fmtMoney, fmtHours } from '@core/lib/format';
 import { EmptyState, cx } from './primitives';
@@ -9,6 +9,7 @@ import { useAuth, useWho } from '@core/auth/AuthProvider';
 const ICONS: Record<string, typeof Wrench> = {
   inspection: ClipboardCheck, repair: Wrench, work_order_opened: Wrench, diagnosis: Stethoscope, maintenance: Settings2,
   fuel: Fuel, incident: ShieldAlert, document: FileText, meter: Gauge,
+  shop_report_received: Inbox, shop_report_accepted: Hand, shop_report_solved: CheckCircle2,
 };
 
 /** Historial cronológico de la vida del vehículo (alimentado por todos los módulos) */
