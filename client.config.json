@@ -9,17 +9,17 @@
     "timezone": "America/Puerto_Rico"
   },
   "modules": {
-    "accidents": true,
-    "documents": true,
-    "fuel": true,
-    "gps": true,
+    "accidents": false,
+    "documents": false,
+    "fuel": false,
+    "gps": false,
     "inspections": true,
     "inventory": true,
     "maintenance": true,
-    "operations": true,
+    "operations": false,
     "parts_catalog": true,
     "reports": true,
-    "timeclock": true,
+    "timeclock": false,
     "workorders": true
   }
 }

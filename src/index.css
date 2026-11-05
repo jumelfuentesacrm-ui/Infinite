@@ -1,15 +1,15 @@
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap');
 @import 'tailwindcss';
 @source "../modules";
 
 /*
   Lenguaje visual: "tablero de taller". Papel cálido, tinta grafito, naranja de
-  seguridad como acento, números de unidad y de pieza en monoespaciada como
-  placas grabadas. Densidad alta y líneas finas para lectura rápida.
+  seguridad como acento, números de unidad y de pieza en condensada tabular,
+  como placas de identificación. Densidad alta y líneas finas para lectura rápida.
 */
 @theme {
   --font-sans: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
-  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+  /* Cifras, unidades y códigos: condensada de la misma familia, con números tabulares (no tipo "código") */
+  --font-mono: 'IBM Plex Sans Condensed', 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
 
   --color-paper: #F4F3EF;
   --color-panel: #FFFFFF;
@@ -58,10 +58,11 @@
 
 @layer components {
   .tag-unit {
-    @apply inline-flex items-center rounded-[4px] border border-line-strong bg-panel px-1.5 py-px font-mono text-[12px] font-semibold tracking-wide text-ink;
+    @apply inline-flex items-center rounded-[4px] border border-line-strong bg-panel px-1.5 py-px font-mono text-[13px] font-semibold tracking-[0.03em] text-ink;
     box-shadow: inset 0 -1px 0 var(--color-line);
   }
-  .num { font-family: var(--font-mono); font-feature-settings: 'tnum' 1; }
+  .num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-feature-settings: 'tnum' 1; letter-spacing: 0.01em; }
+  .font-mono { font-variant-numeric: tabular-nums; }
   .hairline { border-color: var(--color-line); }
   .safe-bottom { padding-bottom: max(0.75rem, env(safe-area-inset-bottom)); }
   .scroll-x { overflow-x: auto; -webkit-overflow-scrolling: touch; }

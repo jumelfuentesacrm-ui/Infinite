@@ -8,7 +8,7 @@ export interface MapPoint { id: string; lat: number; lng: number; label: string;
 const icon = (label: string, online?: boolean, active?: boolean) => L.divIcon({
   className: '',
   html: `<div style="transform:translate(-50%,-100%);display:inline-flex;flex-direction:column;align-items:center">
-    <span style="font:600 11px 'IBM Plex Mono',monospace;background:${active ? '#E8590C' : '#15181C'};color:#fff;padding:2px 6px;border-radius:4px;white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,.3)">${label}</span>
+    <span style="font:600 12px 'IBM Plex Sans Condensed','IBM Plex Sans',sans-serif;background:${active ? '#E8590C' : '#15181C'};color:#fff;padding:2px 6px;border-radius:4px;white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,.3)">${label}</span>
     <span style="width:10px;height:10px;margin-top:2px;border-radius:50%;border:2px solid #fff;background:${online ? '#2B8A3E' : '#9A9DA2'};box-shadow:0 0 0 1px rgba(0,0,0,.25)"></span></div>`,
   iconSize: [0, 0],
 });

@@ -185,7 +185,7 @@ export function StatCard({ label, value, tone, icon: Icon, to, hint }: {
         <span className="text-[12px] font-medium leading-tight text-muted">{label}</span>
         {Icon && <Icon className="size-4 shrink-0 text-faint" />}
       </div>
-      <div className="num mt-2 text-[26px] font-semibold leading-none tracking-tight">{value}</div>
+      <div className="num mt-2 text-[30px] font-semibold leading-none">{value}</div>
       {hint && <div className="mt-1.5 text-xs text-muted">{hint}</div>}
     </div>
   );
