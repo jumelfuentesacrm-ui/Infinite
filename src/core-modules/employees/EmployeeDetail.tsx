@@ -36,7 +36,7 @@ export default function EmployeeDetail() {
               subtitle={<span className="tag-unit">{e.employee_code}</span>}
               actions={<>
                 <Can perm="employees.manage"><Button icon={KeyRound} onClick={() => setModal('pin')}>Restablecer PIN</Button></Can>
-                <Can perm="employees.edit"><Button icon={Pencil} onClick={() => setModal('edit')}>Editar</Button></Can>
+                <Can perm={["employees.edit", "employees.view"]}><Button icon={Pencil} onClick={() => setModal('edit')}>Editar</Button></Can>
                 {can('employees.edit') && e.id !== profile?.id && (
                   <Button icon={Power} variant={e.status === 'active' ? 'ghost' : 'primary'} onClick={async () => {
                     const next = e.status === 'active' ? 'inactive' : 'active';

@@ -127,7 +127,7 @@ export function ItemDetail() {
               <Can perm="inventory.issue"><Button icon={ArrowUpFromLine} onClick={() => setModal('issue')}>Salida</Button></Can>
               <Can perm="inventory.adjust"><Button icon={ClipboardCheck} onClick={() => setModal('count')}>Conteo</Button></Can>
               <Can perm="inventory.request"><Button icon={ShoppingCart} onClick={() => setModal('request')}>Solicitar compra</Button></Can>
-              <Can perm={['inventory.edit', 'inventory.create']}><Button variant="ghost" icon={Pencil} onClick={() => setModal('edit')}>Editar</Button></Can>
+              <Can perm="inventory.view"><Button variant="ghost" icon={Pencil} onClick={() => setModal('edit')}>Editar</Button></Can>
             </>} />
           <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
             <StatCard label="Existencia" value={`${fmtNum(i.quantity_on_hand)}`} tone={stockTone(i)} hint={i.unit} />
@@ -281,7 +281,7 @@ export function SuppliersPage() {
   return (
     <>
       <PageHeader back="/inventario" title="Proveedores" actions={<Can perm="inventory.edit"><Button variant="primary" icon={Plus} onClick={() => setEdit({})}>Nuevo</Button></Can>} />
-      <DataTable rows={q.data} loading={q.isLoading} error={q.error} onRowClick={can('inventory.edit') ? setEdit : undefined} exportName="Proveedores" columns={[
+      <DataTable rows={q.data} loading={q.isLoading} error={q.error} onRowClick={can('inventory.view') ? setEdit : undefined} exportName="Proveedores" columns={[
         { key: 'name', header: 'Nombre', mobile: 'title' }, { key: 'contact', header: 'Contacto' }, { key: 'phone', header: 'Teléfono' }, { key: 'email', header: 'Correo', mobile: 'hide' },
       ]} />
       {edit && <SupplierForm s={edit} onClose={() => setEdit(null)} />}

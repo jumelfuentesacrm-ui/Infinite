@@ -34,7 +34,7 @@ export default function VehicleDetail() {
             subtitle={v.status_reason}
             actions={<>
               <Slot name="vehicle.actions" props={{ vehicle: v }} />
-              <Can perm="fleet.edit"><Button icon={Pencil} onClick={() => setEditing(true)}>Editar</Button></Can>
+              <Can perm={["fleet.edit", "fleet.view"]}><Button icon={Pencil} onClick={() => setEditing(true)}>Editar</Button></Can>
             </>} />
           <Tabs value={tab} onChange={setTab} tabs={[
             { id: 'summary', label: 'Expediente' }, { id: 'history', label: 'Historial' },
