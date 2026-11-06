@@ -5,7 +5,7 @@ import { useParams } from 'react-router-dom';
 import { KeyRound, Pencil, Power } from 'lucide-react';
 import { supabase } from '@core/data/supabase';
 import { rpc, run, useAction, useData } from '@core/data/api';
-import { fleetKeys, ROLE_LABELS, type Employee } from '@core/data/shared';
+import { fleetKeys, ROLE_LABELS, type Employee, usePinLength } from '@core/data/shared';
 import { Can, useAuth } from '@core/auth/AuthProvider';
 import { useSlotItems } from '@core/modules/Slot';
 import { Badge, Button, KeyValue, PageHeader, QueryView, Section, Spinner, Tabs } from '@core/ui/primitives';
@@ -69,7 +69,7 @@ export default function EmployeeDetail() {
               return <Suspense key={t.id} fallback={<Spinner />}><C employeeId={e.id} /></Suspense>;
             })}
             {modal === 'edit' && <EditEmployee e={e} onClose={() => setModal(null)} />}
-            {modal === 'pin' && <ResetPin employeeId={e.id} onClose={() => setModal(null)} />}
+            {modal === 'pin' && <ResetPin employeeId={e.id} role={e.role_id} onClose={() => setModal(null)} />}
           </>
         );
       }}
@@ -105,20 +105,22 @@ function EditEmployee({ e, onClose }: { e: Employee; onClose: () => void }) {
   );
 }
 
-export function ResetPin({ employeeId, onClose, self }: { employeeId: string; onClose: () => void; self?: boolean }) {
+export function ResetPin({ employeeId, onClose, self, role }: { employeeId: string; onClose: () => void; self?: boolean; role?: string | null }) {
+  const pinLen = usePinLength(role);
   const [pin, setPin] = useState('');
   const [pin2, setPin2] = useState('');
   const save = useAction(() => {
+    if (pin.length !== pinLen) throw new Error(`El PIN lleva ${pinLen} dígitos`);
     if (pin !== pin2) throw new Error('Los PIN no coinciden');
     return rpc('set_employee_pin', { p_employee: employeeId, p_pin: pin });
   }, { success: 'PIN actualizado', onSuccess: onClose });
   return (
     <Modal open onClose={onClose} title={self ? 'Cambiar mi PIN' : 'Restablecer PIN'} size="sm"
-      footer={<><Button onClick={onClose}>Cancelar</Button><Button variant="primary" disabled={pin.length < 4} loading={save.isPending} onClick={() => save.mutate()}>Guardar</Button></>}>
+      footer={<><Button onClick={onClose}>Cancelar</Button><Button variant="primary" disabled={pin.length !== pinLen || pin2.length !== pinLen} loading={save.isPending} onClick={() => save.mutate()}>Guardar</Button></>}>
       <div className="space-y-3">
-        <Field label="Nuevo PIN" hint="4 a 8 dígitos, evite secuencias como 1234"><Input value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))} inputMode="numeric" maxLength={8} type="password" className="h-10 font-mono tracking-widest" /></Field>
-        <Field label="Repetir PIN"><Input value={pin2} onChange={(e) => setPin2(e.target.value.replace(/\D/g, ''))} inputMode="numeric" maxLength={8} type="password" className="h-10 font-mono tracking-widest" /></Field>
-        {!self && <p className="text-xs text-muted">Si la cuenta estaba bloqueada por intentos fallidos, se desbloquea.</p>}
+        <Field label="Nuevo PIN" hint={`${pinLen} dígitos. Único y sin secuencias como 1234.`}><Input value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))} inputMode="numeric" maxLength={pinLen} type="password" className="h-10 font-mono tracking-widest" /></Field>
+        <Field label="Repetir PIN"><Input value={pin2} onChange={(e) => setPin2(e.target.value.replace(/\D/g, ''))} inputMode="numeric" maxLength={pinLen} type="password" className="h-10 font-mono tracking-widest" /></Field>
+        {!self && <p className="text-xs text-muted">Si cambia el rol de la persona, asígnele un PIN nuevo con el largo de ese rol.</p>}
       </div>
     </Modal>
   );

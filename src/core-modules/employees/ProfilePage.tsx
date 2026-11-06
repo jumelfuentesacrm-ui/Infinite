@@ -24,7 +24,7 @@ export default function ProfilePage() {
           <p className="mt-3 text-xs text-muted">Si usa un teléfono o tableta compartida, cierre sesión al terminar.</p>
         </Section>
       </div>
-      {pin && <ResetPin self employeeId={profile.id} onClose={() => setPin(false)} />}
+      {pin && <ResetPin self employeeId={profile.id} role={profile.role_id} onClose={() => setPin(false)} />}
     </>
   );
 }

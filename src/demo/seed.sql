@@ -15,11 +15,11 @@ update public.app_settings set value = jsonb_set(value, '{default_labor_rate}', 
 update public.app_settings set value = jsonb_set(value, '{deadline_time}', '"06:00"') where key = 'inspections';
 
 -- Empleados
-select public.bootstrap_admin('ADMIN', 'Marisol Rivera', '4826');
+select public.bootstrap_admin('ADMIN', 'Marisol Rivera', '482615');
 insert into auth.users(id) select gen_random_uuid() from generate_series(1, 8);
 update public.employees set auth_user_id = (select id from auth.users order by id limit 1) where employee_code = 'ADMIN';
 select demo.as_user('ADMIN');
-select public.create_employee('SUP1', 'Javier Ortiz', 'supervisor', '8264', '787-555-0110', 'Supervisor de campo', current_date - 900);
+select public.create_employee('SUP1', 'Javier Ortiz', 'supervisor', '82641', '787-555-0110', 'Supervisor de campo', current_date - 900);
 select public.create_employee('CH01', 'Carlos Méndez', 'driver', '7391', '787-555-0121', 'Operador', current_date - 600);
 select public.create_employee('CH02', 'Diana Colón', 'driver', '7392', '787-555-0122', 'Operadora', current_date - 400);
 select public.create_employee('CH03', 'Luis Torres', 'driver', '7393', '787-555-0123', 'Operador', current_date - 120);

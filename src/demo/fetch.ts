@@ -18,7 +18,7 @@ const user = (id: string) => ({ id, aud: 'authenticated', role: 'authenticated',
 const session = (id: string) => ({ access_token: makeToken(id), refresh_token: id, token_type: 'bearer', expires_in: 31536000, expires_at: 4102444800, user: user(id) });
 
 const MESSAGES: Record<string, string> = {
-  invalid: 'Código o PIN incorrecto', inactive: 'Cuenta desactivada. Contacte al administrador.', locked: 'Demasiados intentos. Cuenta bloqueada temporalmente.',
+  invalid: 'PIN incorrecto', inactive: 'Cuenta desactivada. Contacte al administrador.', locked: 'Demasiados intentos. Cuenta bloqueada temporalmente.',
 };
 
 export async function demoFetch(input: RequestInfo | URL, init: RequestInit = {}): Promise<Response> {
@@ -29,8 +29,8 @@ export async function demoFetch(input: RequestInfo | URL, init: RequestInit = {}
 
   // ---- Edge Function pin-login (misma lógica que supabase/functions/pin-login)
   if (path.endsWith('/functions/v1/pin-login')) {
-    const { code = '', pin = '' } = await req.json().catch(() => ({}));
-    const r = (await db.query<{ v: any }>(`select public.verify_employee_pin($1, $2) as v`, [String(code), String(pin)])).rows[0].v;
+    const { pin = '' } = await req.json().catch(() => ({}));
+    const r = (await db.query<{ v: any }>(`select public.verify_pin($1, 'demo') as v`, [String(pin)])).rows[0].v;
     if (!r.ok) return json({ error: MESSAGES[r.reason] ?? MESSAGES.invalid }, 401);
     let uid: string = r.auth_user_id;
     if (!uid) {

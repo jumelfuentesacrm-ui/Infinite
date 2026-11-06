@@ -111,3 +111,13 @@ export function useAttachments(entityType: string, entityIds: string[]) {
       .is('archived_at', null).order('created_at')) as Promise<Attachment[]>,
   { enabled: entityIds.length > 0 });
 }
+
+// ---------------------------------------------------------------- Roles y largo del PIN
+export interface RoleRow { id: string; name: string; pin_length: number }
+export const useRoles = () => useData(['roles'], () =>
+  run(supabase.from('roles').select('id, name, pin_length').order('pin_length', { ascending: false })) as Promise<RoleRow[]>);
+/** Dígitos que lleva el PIN de un rol (4 empleados · 5 supervisores · 6 administradores, configurable) */
+export function usePinLength(role?: string | null) {
+  const q = useRoles();
+  return q.data?.find((r) => r.id === role)?.pin_length ?? (role === 'admin' ? 6 : role === 'supervisor' ? 5 : 4);
+}

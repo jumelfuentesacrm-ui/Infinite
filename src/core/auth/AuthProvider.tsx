@@ -25,7 +25,8 @@ interface AuthCtx {
   isAdmin: boolean;
   /** true si tiene el permiso (o cualquiera de la lista). Sin regla = true. */
   can: (rule?: PermRule) => boolean;
-  login: (code: string, pin: string) => Promise<void>;
+  /** Entrada solo con PIN: el PIN identifica a la persona */
+  login: (pin: string) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -61,8 +62,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (uid && me.isSuccess && !me.data.profile) supabase.auth.signOut();
   }, [uid, me.isSuccess, me.data]);
 
-  const login = useCallback(async (code: string, pin: string) => {
-    const { data: body, error: fnError } = await supabase.functions.invoke('pin-login', { body: { code, pin } });
+  const login = useCallback(async (pin: string) => {
+    const { data: body, error: fnError } = await supabase.functions.invoke('pin-login', { body: { pin } });
     if (fnError) {
       const detail = await (fnError as { context?: Response }).context?.json?.().catch(() => null);
       throw new AppError(detail?.error ?? (/fetch/i.test(fnError.message) ? 'Sin conexión con el servidor' : 'No se pudo iniciar sesión'));

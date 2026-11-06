@@ -21,16 +21,16 @@ exception when others then
 end $$;
 
 -- ---------- 1. Arranque: admin + vínculo de auth ----------
-select public.bootstrap_admin('ADMIN', 'Admin Principal', '4826');
-select pg_temp.expect_error($$select public.bootstrap_admin('X2','Otro','4826')$$, 'Ya existen');
+select public.bootstrap_admin('ADMIN', 'Admin Principal', '482615');
+select pg_temp.expect_error($$select public.bootstrap_admin('X2','Otro','482615')$$, 'Ya existen');
 insert into auth.users(id) values ('00000000-0000-0000-0000-00000000000a');
 select public.link_employee_auth((select id from employees where employee_code='ADMIN'), '00000000-0000-0000-0000-00000000000a');
 
 -- PIN: correcto, incorrecto, bloqueo
 do $$ begin
-  assert (public.verify_employee_pin('admin', '4826')->>'ok')::boolean, 'PIN correcto debe pasar';
-  assert not (public.verify_employee_pin('ADMIN', '0000')->>'ok')::boolean, 'PIN incorrecto';
-  assert (public.verify_employee_pin('NOEXISTE', '4826')->>'reason') = 'invalid';
+  assert (public.verify_pin('482615', 't1')->>'ok')::boolean, 'PIN correcto debe pasar';
+  assert not (public.verify_pin('482616', 't1')->>'ok')::boolean, 'PIN incorrecto';
+  assert (public.verify_pin('4826', 't1')->>'reason') = 'invalid', 'un PIN de 4 no es de admin';
 end $$;
 select count(*) = 1 as no_plaintext_pin from employee_credentials where pin_hash like '$2%';
 
@@ -38,8 +38,21 @@ select pg_temp.login('ADMIN');
 select public.create_employee('CH01', 'Carlos Chofer', 'driver', '7391', '787-555-0101', 'Operador');
 select public.create_employee('CH02', 'Diana Chofer', 'driver', '7392');
 select public.create_employee('MEC1', 'Mario Mecánico', 'mechanic', '5519');
-select public.create_employee('SUP1', 'Sara Supervisora', 'supervisor', '8264');
+select public.create_employee('SUP1', 'Sara Supervisora', 'supervisor', '82641');
 select pg_temp.expect_error($$select public.create_employee('BAD', 'Pin malo', 'driver', '1111')$$, 'fácil');
+select pg_temp.expect_error($$select public.create_employee('BAD', 'Pin largo', 'driver', '73915')$$, 'debe tener 4');
+select pg_temp.expect_error($$select public.create_employee('BAD', 'Pin repetido', 'mechanic', '7391')$$, 'ya lo usa');
+reset role;
+do $$ begin
+  assert (public.verify_pin('5519', 'x')->>'role_id') = 'mechanic', 'el PIN identifica al mecánico';
+  assert (public.verify_pin('82641', 'x')->>'role_id') = 'supervisor', 'el PIN identifica al supervisor';
+  -- 5 fallos desde el mismo dispositivo lo bloquean, otro dispositivo sigue entrando
+  perform public.verify_pin('9182', 'malo'); perform public.verify_pin('9183', 'malo'); perform public.verify_pin('9184', 'malo');
+  perform public.verify_pin('9185', 'malo'); perform public.verify_pin('9186', 'malo');
+  assert (public.verify_pin('5519', 'malo')->>'reason') = 'locked', 'bloqueo por intentos';
+  assert (public.verify_pin('5519', 'otro')->>'ok')::boolean, 'otro dispositivo no se bloquea';
+end $$;
+select pg_temp.login('ADMIN');
 reset role;
 insert into auth.users(id) select gen_random_uuid() from generate_series(1,4);
 update employees e set auth_user_id = u.id from (

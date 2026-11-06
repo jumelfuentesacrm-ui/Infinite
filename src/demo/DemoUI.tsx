@@ -4,22 +4,22 @@ import { RotateCcw } from 'lucide-react';
 import { resetDemo } from './backend';
 
 export const DEMO_USERS = [
-  { code: 'ADMIN', pin: '4826', name: 'Marisol Rivera', role: 'Admin' },
-  { code: 'SUP1', pin: '8264', name: 'Javier Ortiz', role: 'Supervisor' },
+  { code: 'ADMIN', pin: '482615', name: 'Marisol Rivera', role: 'Admin' },
+  { code: 'SUP1', pin: '82641', name: 'Javier Ortiz', role: 'Supervisor' },
   { code: 'CH01', pin: '7391', name: 'Carlos Méndez', role: 'ATV/UTV' },
   { code: 'MEC1', pin: '5519', name: 'Mario Santiago', role: 'Mecánico' },
 ];
 
-export function DemoUsers({ onPick }: { onPick: (code: string, pin: string) => void }) {
+export function DemoUsers({ onPick }: { onPick: (pin: string) => void }) {
   return (
-    <div className="mt-8 w-full max-w-xs">
-      <p className="mb-2 text-center text-xs uppercase tracking-[0.1em] text-white/45">Demo · entrar como</p>
+    <div className="mt-10 w-full">
+      <p className="mb-2 text-center text-[11px] uppercase tracking-[0.16em] text-faint">Demo · entrar como</p>
       <div className="grid grid-cols-2 gap-2">
         {DEMO_USERS.map((u) => (
-          <button key={u.code} onClick={() => onPick(u.code, u.pin)}
-            className="rounded-lg border border-white/15 bg-rail-2 px-3 py-2 text-left hover:border-brand">
-            <span className="block text-sm font-medium text-white">{u.role}</span>
-            <span className="block font-mono text-[11px] text-rail-text">{u.code} · PIN {u.pin}</span>
+          <button key={u.code} onClick={() => onPick(u.pin)}
+            className="rounded-lg border border-line bg-panel px-3 py-2 text-left transition-colors hover:border-line-strong">
+            <span className="block text-[13px] font-medium text-ink">{u.role}</span>
+            <span className="block text-[11px] tabular-nums text-muted">PIN {u.pin}</span>
           </button>
         ))}
       </div>

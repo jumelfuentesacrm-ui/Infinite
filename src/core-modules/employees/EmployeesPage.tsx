@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Plus, Users } from 'lucide-react';
 import { z } from 'zod';
 import { rpc, useAction } from '@core/data/api';
-import { fleetKeys, ROLE_LABELS, useEmployees } from '@core/data/shared';
+import { fleetKeys, ROLE_LABELS, useEmployees, usePinLength } from '@core/data/shared';
 import { Can, useAuth } from '@core/auth/AuthProvider';
 import { Badge, Button, EmptyState, PageHeader, Segmented } from '@core/ui/primitives';
 import { DataTable } from '@core/ui/DataTable';
@@ -45,7 +45,7 @@ const createSchema = z.object({
   code: z.string({ required_error: 'Requerido' }).trim().regex(/^[A-Za-z0-9_-]{2,20}$/, '2–20 letras, números o guiones'),
   name: z.string({ required_error: 'Requerido' }).trim().min(2, 'Requerido'),
   role: z.string().min(1),
-  pin: z.string({ required_error: 'Requerido' }).regex(/^\d{4,8}$/, 'Entre 4 y 8 dígitos'),
+  pin: z.string({ required_error: 'Requerido' }).regex(/^\d{4,8}$/, 'Solo números'),
   phone: z.string().nullable(), job_title: z.string().nullable(), hired_at: z.string().nullable(), notes: z.string().nullable(),
 });
 
@@ -53,11 +53,13 @@ function EmployeeCreate({ onClose }: { onClose: () => void }) {
   const { can } = useAuth();
   const nav = useNavigate();
   const f = useForm({ code: '', name: '', role: 'driver', pin: '', phone: '', job_title: '', hired_at: '', notes: '' }, createSchema);
+  const pinLen = usePinLength(f.values.role);
   const save = useAction(() => {
     const v = f.validate(); if (!v) throw new Error('Revise los campos');
+    if (v.pin.length !== pinLen) throw new Error(`El PIN de este rol lleva ${pinLen} dígitos`);
     return rpc<string>('create_employee', { p_code: v.code, p_name: v.name, p_role: v.role, p_pin: v.pin, p_phone: v.phone,
       p_job_title: v.job_title, p_hired_at: v.hired_at, p_notes: v.notes });
-  }, { invalidate: [fleetKeys.employees], success: 'Empleado creado. Entregue su código y PIN.', onSuccess: (id) => { onClose(); nav(`/empleados/${id}`); } });
+  }, { invalidate: [fleetKeys.employees], success: 'Empleado creado. Entréguele su PIN: con él entra a la app.', onSuccess: (id) => { onClose(); nav(`/empleados/${id}`); } });
 
   const roles = Object.entries(ROLE_LABELS).filter(([r]) => r !== 'admin' || can('employees.manage'));
   return (
@@ -66,9 +68,9 @@ function EmployeeCreate({ onClose }: { onClose: () => void }) {
       <div className="space-y-4">
         <FormGrid>
           <Field label="Nombre completo" required error={f.errors.name}><Input {...f.bind('name')} /></Field>
-          <Field label="Código de empleado" required error={f.errors.code} hint="Lo usa para entrar, ej. CH01"><Input {...f.bind('code')} className="h-10 font-mono uppercase" /></Field>
+          <Field label="Número de empleado" required error={f.errors.code} hint="Para identificarlo en la app, ej. CH01"><Input {...f.bind('code')} className="h-10 font-mono uppercase" /></Field>
           <Field label="Rol" required><Select {...f.bind('role')} options={roles.map(([value, label]) => ({ value, label }))} /></Field>
-          <Field label="PIN inicial" required error={f.errors.pin} hint="4 a 8 dígitos. Se guarda cifrado."><Input {...f.bind('pin')} inputMode="numeric" className="h-10 font-mono tracking-widest" maxLength={8} /></Field>
+          <Field label="PIN" required error={f.errors.pin} hint={`${pinLen} dígitos para este rol. Es único: con él entra a la app.`}><Input {...f.bind('pin')} inputMode="numeric" className="h-10 font-mono tracking-widest" maxLength={pinLen} /></Field>
           <Field label="Teléfono"><Input {...f.bind('phone')} type="tel" /></Field>
           <Field label="Puesto"><Input {...f.bind('job_title')} /></Field>
           <Field label="Fecha de ingreso"><Input type="date" {...f.bind('hired_at')} /></Field>

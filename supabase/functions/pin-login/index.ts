@@ -1,5 +1,6 @@
 // Edge Function: pin-login
-// Valida código de empleado + PIN en el servidor y devuelve una sesión de Supabase Auth.
+// Valida el PIN en el servidor (el PIN identifica a la persona; su largo depende del rol)
+// y devuelve una sesión de Supabase Auth.
 // Cada empleado tiene un usuario interno de Auth (correo sintético, sin contraseña conocida);
 // el empleado nunca ve ni usa correo/contraseña. Requiere: SUPABASE_URL, SUPABASE_ANON_KEY,
 // SUPABASE_SERVICE_ROLE_KEY (inyectadas automáticamente por Supabase).
@@ -14,27 +15,28 @@ const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...cors, 'Content-Type': 'application/json' } });
 
 const MESSAGES: Record<string, string> = {
-  invalid: 'Código o PIN incorrecto',
+  invalid: 'PIN incorrecto',
   inactive: 'Cuenta desactivada. Contacte al administrador.',
-  locked: 'Demasiados intentos. Cuenta bloqueada temporalmente.',
+  locked: 'Demasiados intentos. Espere unos minutos e intente de nuevo.',
 };
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
   if (req.method !== 'POST') return json({ error: 'Método no permitido' }, 405);
 
-  let code = '', pin = '';
+  let pin = '';
   try {
     const body = await req.json();
-    code = String(body.code ?? '').trim().toUpperCase();
     pin = String(body.pin ?? '').trim();
   } catch { return json({ error: 'Solicitud inválida' }, 400); }
-  if (!/^[A-Z0-9_-]{2,20}$/.test(code) || !/^\d{4,8}$/.test(pin)) return json({ error: MESSAGES.invalid }, 401);
+  if (!/^\d{4,8}$/.test(pin)) return json({ error: MESSAGES.invalid }, 401);
+  // Límite de intentos por dispositivo: IP que reporta la red de Supabase
+  const client = (req.headers.get('cf-connecting-ip') ?? req.headers.get('x-forwarded-for')?.split(',')[0] ?? 'desconocido').trim();
 
   const url = Deno.env.get('SUPABASE_URL')!;
   const admin = createClient(url, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { persistSession: false } });
 
-  const { data: result, error } = await admin.rpc('verify_employee_pin', { p_code: code, p_pin: pin });
+  const { data: result, error } = await admin.rpc('verify_pin', { p_pin: pin, p_client: client });
   if (error) return json({ error: 'Error del servidor' }, 500);
   if (!result?.ok) {
     return json({ error: MESSAGES[result?.reason] ?? MESSAGES.invalid, locked_until: result?.locked_until }, 401);

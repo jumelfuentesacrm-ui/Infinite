@@ -13,7 +13,7 @@ alter default privileges in schema public revoke execute on functions from anon,
 do $$
 declare f text;
 begin
-  foreach f in array array['public.verify_employee_pin(text,text)', 'public.link_employee_auth(uuid,uuid)',
+  foreach f in array array['public.verify_employee_pin(text,text)', 'public.verify_pin(text,text)', 'public.link_employee_auth(uuid,uuid)',
                            'public.bootstrap_admin(text,text,text)', 'public.run_alerts()', 'public.gps_ingest(text,jsonb)'] loop
     if to_regprocedure(f) is not null then
       execute format('revoke execute on function %s from public, anon, authenticated', f);
