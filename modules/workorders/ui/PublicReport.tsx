@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { CheckCircle2, ChevronLeft, Loader2, Send, Wrench } from 'lucide-react';
+import { CheckCircle2, ChevronDown, ChevronLeft, Loader2, Send, Wrench } from 'lucide-react';
 import { rpc } from '@core/data/api';
 import { brand } from '@core/config';
 import { cx } from '@core/ui/primitives';
@@ -116,21 +116,20 @@ export function PublicReport() {
               <fieldset className="fade-in">
                 <legend className="mb-2 block text-sm font-medium">Número de {TYPE_LABEL[type] ?? 'unidad'} <span className="text-bad">*</span></legend>
                 {!list.length && <p className="rounded-lg border border-line bg-panel px-4 py-3 text-sm text-muted">No hay {TYPE_LABEL[type] ?? 'unidades'} registrados todavía.</p>}
-                <div className="grid grid-cols-3 gap-2 min-[400px]:grid-cols-4" role="radiogroup" aria-label="Número de unidad">
-                  {list.map((u) => {
-                    const on = u.unit_number === unit;
-                    return (
-                      <button type="button" key={u.unit_number} role="radio" aria-checked={on} title={u.label}
-                        onClick={() => { setUnit(u.unit_number); if (!desc) setTimeout(() => descRef.current?.focus({ preventScroll: false }), 50); }}
-                        className={cx('flex min-h-14 flex-col items-center justify-center rounded-lg border px-1.5 py-2 transition-[background-color,border-color,color,transform] duration-150 active:scale-[0.97]',
-                          on ? 'border-brand bg-brand text-white' : 'border-line-strong bg-panel text-ink hover:border-brand/60')}>
-                        <span className="max-w-full truncate font-mono text-[17px] font-semibold tracking-wide">{u.unit_number}</span>
-                      </button>
-                    );
-                  })}
-                </div>
+                {list.length > 0 && (
+                  <div className="relative">
+                    <select id="unit" value={match ? unit : ''} required aria-label={`Número de ${TYPE_LABEL[type] ?? 'unidad'}`}
+                      onChange={(e) => { setUnit(e.target.value); if (e.target.value && !desc) setTimeout(() => descRef.current?.focus(), 50); }}
+                      className={cx('h-14 w-full appearance-none rounded-lg border border-line-strong bg-panel pr-12 pl-4 text-xl outline-none transition-shadow focus:border-brand focus:ring-4 focus:ring-brand/15',
+                        match ? 'font-mono font-semibold tracking-wide text-ink' : 'text-base text-faint')}>
+                      <option value="" disabled>Escoja el número…</option>
+                      {list.map((u) => <option key={u.unit_number} value={u.unit_number}>{u.unit_number}</option>)}
+                    </select>
+                    <ChevronDown className="pointer-events-none absolute top-1/2 right-4 size-5 -translate-y-1/2 text-muted" aria-hidden />
+                  </div>
+                )}
                 <p className={cx('mt-2 min-h-5 text-[13px]', match ? 'text-ink-2' : 'text-muted')}>
-                  {match ? <>Unidad <span className="font-mono font-semibold">{match.unit_number}</span> · {match.label}</> : 'Toque el número que tiene la unidad en la calcomanía.'}
+                  {match ? <>Unidad <span className="font-mono font-semibold">{match.unit_number}</span> · {match.label}</> : 'Es el número que tiene la unidad en la calcomanía.'}
                 </p>
               </fieldset>
             )}
