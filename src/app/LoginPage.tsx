@@ -58,9 +58,10 @@ export function LoginPage() {
       <main className="flex flex-1 flex-col items-center justify-center px-6 pt-[max(1.5rem,env(safe-area-inset-top))] pb-6">
         <div className="fade-in w-full max-w-[320px]">
           <header className="text-center">
-            {brand.logo && <img src={brand.logo} alt={brand.company} width={150} height={58} className="mx-auto mb-4 h-auto w-[150px] select-none" draggable={false} />}
-            <p className="text-[13px] font-medium uppercase tracking-[0.2em] text-muted">{brand.company}</p>
-            <h1 className="mt-2 text-[26px] font-semibold tracking-tight">{brand.name}</h1>
+            {brand.logo && <img src={brand.logo} alt={brand.company} width={150} height={58} className="mx-auto mb-5 h-auto w-[150px] select-none" draggable={false} />}
+            {/* Con logo, el nombre de la empresa ya está en el logo */}
+            {!brand.logo && <p className="mb-2 text-[13px] font-medium uppercase tracking-[0.2em] text-muted">{brand.company}</p>}
+            <h1 className="text-[26px] font-semibold tracking-tight">{brand.name}</h1>
           </header>
 
           <section className={cx(brand.logo ? 'mt-6' : 'mt-10')} aria-label="Ingreso con PIN">
