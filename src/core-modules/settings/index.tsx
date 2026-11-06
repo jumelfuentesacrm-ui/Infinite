@@ -9,10 +9,10 @@ export default defineModule({
   routes: [
     { path: '/ajustes', component: lazy(() => import('./SettingsPage')), perm: 'settings.view' },
     // Solicitudes de cambio: solo el administrador (settings.manage)
-    { path: '/solicitudes', component: lazy(() => import('./RequestsPage')), perm: 'settings.manage' },
+    { path: '/solicitudes', component: lazy(() => import('./RequestsPage')), perm: ['settings.manage', 'fleet.review_changes'] },
   ],
   nav: [
-    { to: '/solicitudes', label: 'Solicitudes', icon: GitPullRequest, perm: 'settings.manage', group: 'administracion', order: 80 },
+    { to: '/solicitudes', label: 'Solicitudes', icon: GitPullRequest, perm: ['settings.manage', 'fleet.review_changes'], group: 'administracion', order: 80 },
     { to: '/ajustes', label: 'Configuración', icon: Settings, perm: 'settings.view', group: 'administracion', order: 90 },
   ],
   entityLinks: { change_request: () => '/solicitudes' },

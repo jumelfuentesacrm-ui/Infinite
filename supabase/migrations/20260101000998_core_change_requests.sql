@@ -185,3 +185,99 @@ do $$ begin
     execute 'alter publication supabase_realtime add table public.change_requests';
   end if;
 end $$;
+
+-- =============================================================================
+-- Flota: los mecánicos añaden vehículos (no los archivan).
+-- El número de vehículo no se repite (sin importar mayúsculas ni espacios).
+-- Sobrescribir un vehículo existente = solicitud que aprueba el admin o un supervisor.
+-- =============================================================================
+insert into public.permissions (id, module_id, action, label, sort) values
+  ('fleet.review_changes', 'fleet', 'review_changes', 'Aprobar solicitudes de cambio de vehículos', 8)
+on conflict (id) do nothing;
+insert into public.role_permissions values ('mechanic', 'fleet.create'), ('supervisor', 'fleet.review_changes')
+on conflict do nothing;
+delete from public.role_permissions where role_id = 'mechanic' and permission_id = 'fleet.delete';
+
+create or replace function app.vehicle_unit_clean()
+returns trigger language plpgsql as $$
+begin
+  new.unit_number := regexp_replace(trim(new.unit_number), '\s+', ' ', 'g');
+  return new;
+end $$;
+drop trigger if exists aa_unit_clean on public.vehicles;
+create trigger aa_unit_clean before insert or update of unit_number on public.vehicles
+  for each row execute function app.vehicle_unit_clean();
+create unique index if not exists vehicles_unit_number_ci on public.vehicles (lower(unit_number));
+
+-- ¿Ya existe ese número? Devuelve el vehículo (o null) para ofrecer la solicitud de cambio.
+create or replace function public.vehicle_by_unit(p_unit text)
+returns jsonb language plpgsql stable security definer set search_path = public as $$
+declare v jsonb;
+begin
+  if not (app.has_perm('fleet.create') or app.has_perm('fleet.view')) then
+    raise exception 'Permiso requerido: fleet.create' using errcode = '42501';
+  end if;
+  select jsonb_build_object('id', id, 'unit_number', unit_number, 'archived', archived_at is not null) into v
+    from public.vehicles where lower(unit_number) = lower(regexp_replace(trim(coalesce(p_unit, '')), '\s+', ' ', 'g'));
+  return v;
+end $$;
+
+-- Quién puede decidir una solicitud: el admin siempre; para vehículos también quien tenga
+-- fleet.review_changes (supervisor), pero nunca su propia solicitud.
+create or replace function app.can_decide_change(p_table text, p_requested_by uuid)
+returns boolean language sql stable security definer set search_path = public as $$
+  select coalesce(app.current_role_id(), '') = 'admin'
+      or (p_table = 'public.vehicles' and app.has_perm('fleet.review_changes')
+          and p_requested_by is distinct from app.current_employee_id());
+$$;
+
+drop policy if exists change_requests_read on public.change_requests;
+create policy change_requests_read on public.change_requests for select to authenticated
+  using ((select app.current_role_id()) = 'admin' or requested_by = (select app.current_employee_id())
+         or (table_name = 'public.vehicles' and (select app.has_perm('fleet.review_changes'))));
+
+create or replace function public.decide_change_request(p_id uuid, p_approve boolean, p_notes text default null)
+returns void language plpgsql security definer set search_path = public as $$
+declare r public.change_requests; v_cols text; v_vals text;
+begin
+  select * into r from public.change_requests where id = p_id for update;
+  if r.id is null then raise exception 'Solicitud no encontrada' using errcode = 'P0002'; end if;
+  if not app.can_decide_change(r.table_name, r.requested_by) then
+    raise exception 'No puede decidir esta solicitud' using errcode = '42501';
+  end if;
+  if r.status <> 'pending' then raise exception 'La solicitud ya fue atendida' using errcode = '22023'; end if;
+
+  if p_approve then
+    select string_agg(quote_ident(k), ', '), string_agg('r.' || quote_ident(k), ', ')
+      into v_cols, v_vals from jsonb_object_keys(r.changes) k;
+    execute format('update %s t set (%s) = (select %s from jsonb_populate_record(null::%s, $1) r) where t.id = $2',
+                   r.table_name, v_cols, v_vals, r.table_name)
+      using r.changes, r.record_id;
+  end if;
+
+  update public.change_requests
+     set status = case when p_approve then 'approved' else 'rejected' end,
+         decided_by = app.current_employee_id(), decided_at = now(), decision_notes = nullif(trim(coalesce(p_notes, '')), '')
+   where id = p_id;
+
+  perform app.notify_employee(r.requested_by, 'settings', 'change_request_decided',
+    case when p_approve then 'Cambio aprobado · ' else 'Cambio rechazado · ' end || coalesce(r.record_label, ''),
+    p_notes, r.link, case when p_approve then 'info' else 'warning' end, 'change_request', r.id);
+end $$;
+
+-- Las solicitudes de vehículos también avisan a los supervisores
+create or replace function app.notify_vehicle_request()
+returns trigger language plpgsql security definer set search_path = public as $$
+declare v_name text;
+begin
+  if new.table_name = 'public.vehicles' then
+    select full_name into v_name from public.employees where id = new.requested_by;
+    perform app.notify(array['supervisor'], 'settings', 'change_request', 'Solicitud de cambio · Vehículo ' || coalesce(new.record_label, ''),
+      coalesce(v_name, 'Un empleado') || ' pide cambiar ' || (select string_agg(x, ', ') from jsonb_object_keys(new.changes) x),
+      '/solicitudes', 'warning', 'change_request', new.id);
+  end if;
+  return new;
+end $$;
+drop trigger if exists notify_vehicle_request on public.change_requests;
+create trigger notify_vehicle_request after insert on public.change_requests
+  for each row execute function app.notify_vehicle_request();

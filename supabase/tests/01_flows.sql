@@ -276,7 +276,7 @@ do $$ begin
   assert (select changes from change_requests) = '{"notes":"Revisar frenos"}'::jsonb, 'solo campos cambiados';
   assert (select notes from vehicles where unit_number='ATV-24') is distinct from 'Revisar frenos', 'aún no aplicado';
 end $$;
-select pg_temp.expect_error($$select public.decide_change_request((select id from change_requests limit 1), true)$$, 'Solo el administrador');
+select pg_temp.expect_error($$select public.decide_change_request((select id from change_requests limit 1), true)$$, 'No puede decidir');
 select pg_temp.login('ADMIN');
 do $$ begin assert (select count(*) from notifications where type='change_request') >= 1, 'admin notificado'; end $$;
 select public.decide_change_request((select id from change_requests limit 1), true, 'ok');
@@ -333,6 +333,24 @@ select public.shop_report_to_work_order((select id from public_reports where sta
 do $$ begin assert exists (select 1 from work_orders where source_type = 'public_report' and status = 'pending_diagnosis'), 'pasó a orden'; end $$;
 select pg_temp.login('ADMIN');
 do $$ begin assert (select count(*) from employee_history((select id from employees where employee_code = 'MEC1'))) >= 3, 'admin ve historial del mecánico'; end $$;
+
+-- ---------- 16. Mecánico añade vehículos; número único; sobrescribir = solicitud ----------
+reset role;
+select pg_temp.login('MEC1');
+insert into vehicles(unit_number, model_id) select '  UTV-77 ', id from vehicle_models where manufacturer='Yanmar' limit 1;
+do $$ begin assert (select unit_number from vehicles where lower(unit_number) = 'utv-77') = 'UTV-77', 'se limpia el número'; end $$;
+select pg_temp.expect_error($$insert into vehicles(unit_number, model_id) select 'utv-77', id from vehicle_models limit 1$$, 'duplicate');
+do $$ begin assert (public.vehicle_by_unit('utv-77') ->> 'unit_number') = 'UTV-77', 'encuentra el existente'; end $$;
+update vehicles set archived_at = now() where unit_number = 'UTV-77';
+do $$ begin assert (select archived_at from vehicles where unit_number = 'UTV-77') is null, 'mecánico no puede archivar'; end $$;
+select pg_temp.expect_error($$delete from vehicles where unit_number = 'UTV-77'$$, 'permission denied');
+select public.request_change('vehicles', (select id from vehicles where unit_number = 'UTV-77'), '{"vin":"VIN-NUEVO"}', 'Sobrescribir datos');
+select pg_temp.expect_error($$select public.decide_change_request((select id from change_requests where record_label = 'UTV-77'), true)$$, 'No puede decidir');
+select pg_temp.login('SUP1');
+do $$ begin assert exists (select 1 from change_requests where record_label = 'UTV-77' and status = 'pending'), 'supervisor ve la solicitud'; end $$;
+select public.decide_change_request((select id from change_requests where record_label = 'UTV-77'), true, 'OK');
+reset role;
+do $$ begin assert (select vin from vehicles where unit_number = 'UTV-77') = 'VIN-NUEVO', 'supervisor aplicó el cambio'; end $$;
 
 reset role;
 select 'TODAS LAS PRUEBAS PASARON' as resultado;

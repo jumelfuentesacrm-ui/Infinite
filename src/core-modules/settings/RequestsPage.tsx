@@ -7,10 +7,11 @@ import { useLiveTable } from '@core/data/realtime';
 import { fmtAgo, fmtDateTime } from '@core/lib/format';
 import { Badge, Button, Card, EmptyState, PageHeader, QueryView, Segmented, type Tone } from '@core/ui/primitives';
 import { Textarea } from '@core/ui/form';
+import { useAuth } from '@core/auth/AuthProvider';
 
 interface ChangeRequest {
   id: string; table_name: string; record_id: string; record_label: string | null; link: string | null;
-  changes: Record<string, unknown>; previous: Record<string, unknown>; reason: string | null; status: string;
+  changes: Record<string, unknown>; previous: Record<string, unknown>; reason: string | null; status: string; requested_by: string;
   requested_at: string; decided_at: string | null; decision_notes: string | null;
   requester: { full_name: string; employee_code: string } | null; decider: { full_name: string } | null;
 }
@@ -61,7 +62,7 @@ export default function RequestsPage() {
   return (
     <div className="mx-auto max-w-4xl">
       <PageHeader title="Solicitudes de cambio"
-        subtitle="Lo ya guardado solo lo modifica el administrador. Aquí llegan los cambios que piden los demás." />
+        subtitle="Lo ya guardado no se modifica directo: aquí llegan los cambios que piden los demás. Los de vehículos también los aprueba el supervisor." />
       <div className="mb-4">
         <Segmented value={scope} onChange={setScope} options={[{ id: 'pending', label: 'Pendientes' }, { id: 'done', label: 'Historial' }]} />
       </div>
@@ -78,8 +79,11 @@ function RequestCard({ r }: { r: ChangeRequest }) {
   const decide = useAction((ok: boolean) => rpc('decide_change_request', { p_id: r.id, p_approve: ok, p_notes: notes || null }),
     { invalidate: [['change_requests'], ['vehicles'], ['employees'], ['inventory'], ['work_orders'], ['vehicle_models']],
       success: (_o) => 'Solicitud atendida' });
+  const { isAdmin, profile } = useAuth();
   const keys = Object.keys(r.changes);
   const pending = r.status === 'pending';
+  // El supervisor decide solicitudes de vehículos, pero no las suyas
+  const canDecide = isAdmin || (r.table_name === 'public.vehicles' && r.requested_by !== profile?.id);
 
   return (
     <Card pad={false} className="overflow-hidden">
@@ -111,7 +115,9 @@ function RequestCard({ r }: { r: ChangeRequest }) {
 
       {r.reason && <p className="border-t border-line px-4 py-2.5 text-sm"><span className="text-muted">Motivo: </span>{r.reason}</p>}
 
-      {pending ? (
+      {pending && !canDecide ? (
+        <p className="border-t border-line px-4 py-2.5 text-[13px] text-muted">Esperando aprobación del administrador.</p>
+      ) : pending ? (
         <div className="flex flex-col gap-2 border-t border-line bg-paper/60 px-4 py-3 sm:flex-row sm:items-end">
           <Textarea rows={1} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Nota para el empleado (opcional)" className="sm:flex-1" aria-label="Nota" />
           <div className="flex gap-2">
