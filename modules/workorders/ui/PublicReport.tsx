@@ -129,7 +129,7 @@ export function PublicReport() {
                   </div>
                 )}
                 <p className={cx('mt-2 min-h-5 text-[13px]', match ? 'text-ink-2' : 'text-muted')}>
-                  {match ? <>Unidad <span className="font-mono font-semibold">{match.unit_number}</span> · {match.label}</> : 'Es el número que tiene la unidad en la calcomanía.'}
+                  {match ? <>Unidad <span className="font-mono font-semibold">{match.unit_number}</span> · {match.label}</> : 'El número está detrás del asiento del pasajero o cerca del manubrio.'}
                 </p>
               </fieldset>
             )}
