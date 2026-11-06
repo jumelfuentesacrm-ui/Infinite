@@ -121,3 +121,12 @@ export function usePinLength(role?: string | null) {
   const q = useRoles();
   return q.data?.find((r) => r.id === role)?.pin_length ?? (role === 'admin' ? 6 : role === 'supervisor' ? 5 : 4);
 }
+
+/** Categorías de piezas: las mismas en inventario y catálogo, para que todo quede agrupado igual. */
+export const PART_CATEGORIES = [
+  'Filtros', 'Lubricantes y fluidos', 'Frenos', 'Transmisión CVT', 'Ejes y diferenciales', 'Suspensión', 'Dirección',
+  'Rodamientos y sellos', 'Motor', 'Juntas y empaques', 'Enfriamiento', 'Encendido y bujías', 'Eléctrico', 'Iluminación',
+  'Gomas y aros', 'Carrocería y accesorios', 'Tornillería y abrazaderas', 'Herramientas y consumibles', 'Otros',
+] as const;
+export const partCategoryOptions = (current?: string | null) =>
+  [...PART_CATEGORIES, ...(current && !(PART_CATEGORIES as readonly string[]).includes(current) ? [current] : [])].map((c) => ({ value: c, label: c }));

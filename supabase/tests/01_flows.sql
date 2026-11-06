@@ -352,5 +352,24 @@ select public.decide_change_request((select id from change_requests where record
 reset role;
 do $$ begin assert (select vin from vehicles where unit_number = 'UTV-77') = 'VIN-NUEVO', 'supervisor aplicó el cambio'; end $$;
 
+-- ---------- 17. Reporte de uso y desgaste (solo admin; no cuenta compras) ----------
+reset role;
+select pg_temp.login('ADMIN');
+select public.inventory_issue((select id from inventory_items where sku = 'MEC-NEW'), 1, 'Se usó en el taller');
+do $$
+declare r record;
+begin
+  select * into r from public.parts_usage_report(date_trunc('year', current_date)::date, current_date) where sku = 'BRK-PAD-01';
+  assert r.uses = 1 and r.quantity = 2, format('pastillas: 1 uso, 2 unidades (%s, %s)', r.uses, r.quantity);
+  assert r.vehicles = 1, 'pastillas en 1 vehículo';
+  assert r.uses_ytd >= r.uses, 'YTD incluye el periodo';
+  select * into r from public.parts_usage_report(current_date, current_date) where sku = 'MEC-NEW';
+  assert r.uses = 1 and r.quantity = 1, 'salida manual cuenta';
+  assert (select uses from public.parts_usage_report(current_date - 400, current_date - 399) where sku = 'MEC-NEW') is null, 'fuera del periodo no aparece';
+  assert (select uses_ytd from public.parts_usage_report(current_date, current_date) where sku = 'MEC-NEW') = 1, 'YTD siempre';
+end $$;
+select pg_temp.login('SUP1');
+select pg_temp.expect_error($$select * from public.parts_usage_report(current_date, current_date)$$, 'Permiso');
+
 reset role;
 select 'TODAS LAS PRUEBAS PASARON' as resultado;

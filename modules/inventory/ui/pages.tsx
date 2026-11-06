@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ArrowDownToLine, ArrowUpFromLine, Boxes, ClipboardCheck, PackagePlus, PackageSearch, Pencil, Plus, ShoppingCart, Truck, Search } from 'lucide-react';
 import { supabase } from '@core/data/supabase';
 import { rpc, run, useAction, useData } from '@core/data/api';
-import { useModels, modelLabel } from '@core/data/shared';
+import { useModels, modelLabel, partCategoryOptions } from '@core/data/shared';
 import { Can, useAuth, useWho } from '@core/auth/AuthProvider';
 import { savedMsg, useSaveOrRequest } from '@core/data/changes';
 import { fmtDateTime, fmtMoney, fmtNum } from '@core/lib/format';
@@ -30,7 +30,10 @@ export function InventoryPage() {
   const nav = useNavigate();
   const [filter, setFilter] = useState<'all' | 'low' | 'out'>('all');
   const [creating, setCreating] = useState(false);
-  const rows = (q.data ?? []).filter((i) => filter === 'all' || (filter === 'out' ? Number(i.quantity_on_hand) <= 0 : stockTone(i) !== 'ok'));
+  const [cat, setCat] = useState('');
+  const rows = (q.data ?? []).filter((i) => (filter === 'all' || (filter === 'out' ? Number(i.quantity_on_hand) <= 0 : stockTone(i) !== 'ok'))
+    && (!cat || (cat === '—' ? !i.category : i.category === cat)));
+  const cats = useMemo(() => [...new Set((q.data ?? []).map((i) => i.category || '—'))].sort((a, b) => a.localeCompare(b, 'es')), [q.data]);
   const canCosts = useCanSeeCosts();
   const value = (q.data ?? []).reduce((s, i) => s + Number(i.quantity_on_hand) * Number(i.unit_cost ?? 0), 0);
   return (
@@ -47,7 +50,11 @@ export function InventoryPage() {
         {canCosts && <StatCard label="Valor en existencia" value={fmtMoney(value)} />}
       </div>
       <DataTable rows={rows} loading={q.isLoading} error={q.error} columns={itemColumns} onRowClick={(i) => nav(`/inventario/${i.id}`)} exportName="Inventario"
-        toolbar={<Segmented value={filter} onChange={setFilter} options={[{ id: 'all', label: 'Todas' }, { id: 'low', label: 'Bajo mínimo' }, { id: 'out', label: 'Agotadas' }]} />}
+        toolbar={<div className="flex flex-wrap items-center gap-2">
+          <Segmented value={filter} onChange={setFilter} options={[{ id: 'all', label: 'Todas' }, { id: 'low', label: 'Bajo mínimo' }, { id: 'out', label: 'Agotadas' }]} />
+          {cats.length > 1 && <Select aria-label="Categoría" value={cat} onChange={(e) => setCat(e.target.value)} placeholder="Todas las categorías" className="w-auto min-w-44"
+            options={cats.map((c) => ({ value: c, label: c === '—' ? 'Sin categoría' : c }))} />}
+        </div>}
         empty={<EmptyState icon={Boxes} title="Sin piezas" />} />
       {creating && <ItemForm onClose={() => setCreating(false)} />}
     </>
@@ -90,7 +97,7 @@ export function ItemForm({ item, onClose, prefill }: { item?: Item; onClose: () 
           <Field label="Nombre" required className="sm:col-span-2"><Input {...set('name')} /></Field>
           <Field label="Nº de pieza del fabricante"><Input className="h-10 font-mono" {...set('part_number')} /></Field>
           <Field label="Fabricante"><Input {...set('manufacturer')} /></Field>
-          <Field label="Categoría"><Input {...set('category')} placeholder="Frenos, Filtros…" /></Field>
+          <Field label="Categoría"><Select {...set('category')} placeholder="Escoja…" options={partCategoryOptions(base?.category)} /></Field>
           <Field label="Ubicación física"><Input {...set('location')} placeholder="Estante A2" /></Field>
           <Field label="Unidad"><Input {...set('unit')} /></Field>
           <Field label="Cantidad mínima"><Input type="number" min="0" {...set('min_quantity')} /></Field>
@@ -391,4 +398,77 @@ export function TopPartsReport() {
     { key: 'quantity', header: 'Utilizadas', align: 'right', render: (r) => <span className="num font-medium">{fmtNum(r.quantity)}</span> },
     ...(canCosts ? [{ key: 'cost', header: 'Costo', align: 'right' as const, render: (r: any) => <span className="num">{fmtMoney(r.cost)}</span> }] : []),
   ]} />;
+}
+
+/* ---------- Uso y desgaste de piezas (solo administración) ---------- */
+type UsageRow = {
+  item_id: string; sku: string; name: string; part_number: string | null; category: string | null; unit: string | null;
+  uses: number; quantity: number; vehicles: number; uses_ytd: number; quantity_ytd: number; vehicles_ytd: number; last_used: string | null;
+};
+const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const PERIODS = [
+  { id: 'month', label: 'Este mes' }, { id: 'last-month', label: 'Mes pasado' }, { id: '30d', label: '30 días' },
+  { id: 'quarter', label: 'Trimestre' }, { id: 'year', label: 'Este año' }, { id: 'custom', label: 'Fechas' },
+] as const;
+type PeriodId = (typeof PERIODS)[number]['id'];
+function periodRange(id: PeriodId): [string, string] {
+  const t = new Date(); const y = t.getFullYear(); const m = t.getMonth();
+  switch (id) {
+    case 'month': return [iso(new Date(y, m, 1)), iso(t)];
+    case 'last-month': return [iso(new Date(y, m - 1, 1)), iso(new Date(y, m, 0))];
+    case '30d': return [iso(new Date(y, m, t.getDate() - 29)), iso(t)];
+    case 'quarter': return [iso(new Date(y, Math.floor(m / 3) * 3, 1)), iso(t)];
+    default: return [iso(new Date(y, 0, 1)), iso(t)];
+  }
+}
+
+export function UsageReport() {
+  const [period, setPeriod] = useState<PeriodId>('month');
+  const [custom, setCustom] = useState<[string, string]>(periodRange('month'));
+  const [from, to] = period === 'custom' ? custom : periodRange(period);
+  const [cat, setCat] = useState('');
+  const q = useData([...keys.all, 'usage', from, to], () => rpc<UsageRow[]>('parts_usage_report', { p_from: from, p_to: to }), { enabled: !!from && !!to && from <= to });
+  const all = q.data ?? [];
+  const cats = useMemo(() => [...new Set(all.map((r) => r.category || '—'))].sort((a, b) => a.localeCompare(b, 'es')), [all]);
+  const rows = all.filter((r) => !cat || (cat === '—' ? !r.category : r.category === cat));
+  const inPeriod = rows.filter((r) => r.uses > 0);
+  const year = to.slice(0, 4);
+  const sum = (k: 'uses' | 'uses_ytd') => rows.reduce((s, r) => s + Number(r[k]), 0);
+
+  return <>
+    <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+      <div className="scroll-x -mx-1 px-1"><Segmented value={period} onChange={setPeriod} options={PERIODS.map((p) => ({ id: p.id, label: p.label }))} /></div>
+      <div className="flex flex-wrap items-end gap-2">
+        {period === 'custom' && <>
+          <Field label="Desde"><Input type="date" value={custom[0]} max={custom[1]} onChange={(e) => setCustom([e.target.value, custom[1]])} /></Field>
+          <Field label="Hasta"><Input type="date" value={custom[1]} min={custom[0]} onChange={(e) => setCustom([custom[0], e.target.value])} /></Field>
+        </>}
+        {cats.length > 1 && <Field label="Categoría"><Select value={cat} onChange={(e) => setCat(e.target.value)} placeholder="Todas"
+          options={cats.map((c) => ({ value: c, label: c === '—' ? 'Sin categoría' : c }))} /></Field>}
+      </div>
+    </div>
+    <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+      <StatCard label="Usos en el periodo" value={fmtNum(sum('uses'))} />
+      <StatCard label="Piezas distintas usadas" value={fmtNum(inPeriod.length)} />
+      <StatCard label={`Usos en ${year} (YTD)`} value={fmtNum(sum('uses_ytd'))} />
+      <StatCard label="Pieza más usada" value={<span className="line-clamp-2 block font-sans text-[17px] leading-snug font-semibold">{inPeriod[0]?.name ?? '—'}</span>} hint={inPeriod[0] ? `${fmtNum(inPeriod[0].uses)} usos` : undefined} />
+    </div>
+    <p className="mb-3 text-[13px] text-muted">
+      Solo piezas gastadas (órdenes de trabajo, mantenimientos y salidas). Las compras no cuentan. Ordenado de más a menos usos en el periodo; YTD es del 1 de enero de {year} hasta el fin del periodo.
+    </p>
+    <DataTable rows={rows} loading={q.isLoading} error={q.error} rowKey={(r) => r.item_id} exportName={`Uso-de-piezas_${from}_${to}`}
+      empty={<EmptyState icon={PackageSearch} title="No se usaron piezas en este periodo">Las piezas aparecen aquí cuando salen del inventario por una orden, un mantenimiento o una salida.</EmptyState>}
+      columns={[
+        { key: 'rank', header: '#', value: (r) => rows.indexOf(r) + 1, render: (r) => <span className="num text-muted">{rows.indexOf(r) + 1}</span>, mobile: 'hide' },
+        { key: 'name', header: 'Pieza', mobile: 'title', render: (r) => <span className="min-w-0"><Link to={`/inventario/${r.item_id}`} className="font-medium hover:underline">{r.name}</Link>
+          {r.part_number && <span className="ml-2 font-mono text-xs text-muted">{r.part_number}</span>}</span> },
+        { key: 'category', header: 'Categoría', value: (r) => r.category ?? '' },
+        { key: 'uses', header: 'Usos', align: 'right', render: (r) => <span className={cx('num font-semibold', !r.uses && 'text-faint')}>{fmtNum(r.uses)}</span> },
+        { key: 'quantity', header: 'Cantidad', align: 'right', render: (r) => <span className="num">{fmtNum(r.quantity)}{r.unit && r.unit !== 'unidad' ? ` ${r.unit}` : ''}</span> },
+        { key: 'vehicles', header: 'Vehículos', align: 'right', render: (r) => <span className="num">{fmtNum(r.vehicles)}</span>, mobile: 'hide' },
+        { key: 'uses_ytd', header: `Usos YTD ${year}`, align: 'right', render: (r) => <span className="num font-medium">{fmtNum(r.uses_ytd)}</span> },
+        { key: 'quantity_ytd', header: 'Cantidad YTD', align: 'right', render: (r) => <span className="num">{fmtNum(r.quantity_ytd)}</span> },
+        { key: 'last_used', header: 'Último uso', value: (r) => r.last_used ?? '', render: (r) => <span className="text-muted">{r.last_used ? fmtDateTime(r.last_used) : '—'}</span>, mobile: 'hide' },
+      ]} />
+  </>;
 }
