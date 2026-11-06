@@ -8,8 +8,6 @@ import { cx } from '@core/ui/primitives';
 
 const DemoUsers = import.meta.env.VITE_DEMO === '1' ? lazy(() => import('../demo/DemoUI').then((m) => ({ default: m.DemoUsers }))) : null;
 
-/** Máximo de dígitos que se muestran como puntos (no revela el largo según el rol) */
-const SLOTS = 6;
 const MAX = 8;
 const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
 
@@ -50,7 +48,6 @@ export function LoginPage() {
     return () => window.removeEventListener('keydown', onKey);
   }, [press, erase, submit, pin]);
 
-  const slots = Math.max(SLOTS, pin.length);
   const ready = pin.length >= 4 && !busy;
 
   return (
@@ -69,9 +66,9 @@ export function LoginPage() {
 
             <div key={shake} className={cx('mt-5 flex h-6 items-center justify-center gap-3.5', shake > 0 && 'pin-shake')}
               role="img" aria-label={pin.length ? `${pin.length} dígitos escritos` : 'Sin dígitos'}>
-              {Array.from({ length: slots }).map((_, i) => (
-                <span key={i} className={cx('size-3 rounded-full transition-all duration-200',
-                  i < pin.length ? (error ? 'scale-100 bg-bad' : 'scale-100 bg-ink') : 'scale-[0.8] bg-line-strong')} />
+              {/* Sin puntos vacíos: cada punto aparece al escribir un dígito */}
+              {Array.from({ length: pin.length }).map((_, i) => (
+                <span key={i} className={cx('pin-dot size-3 rounded-full', error ? 'bg-bad' : 'bg-ink')} />
               ))}
             </div>
             <p className="mt-3 h-5 text-center text-[13px] text-bad" role="alert" aria-live="assertive">{error}</p>
