@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
-import { Home, LogOut, Menu, X, UserCircle2 } from 'lucide-react';
+import { Home, LogOut, Menu, RotateCw, X, UserCircle2 } from 'lucide-react';
+import { useLiveSync, useRefresh } from '@core/data/live';
 import { useAuth } from '@core/auth/AuthProvider';
 import { useModules } from '@core/modules/registry';
 import { Slot } from '@core/modules/Slot';
@@ -55,6 +56,8 @@ export function AppShell({ home }: { home: string }) {
   const items = useNav();
   const [drawer, setDrawer] = useState(false);
   const loc = useLocation();
+  useLiveSync(!!profile);
+  const { refresh, spinning, updateReady } = useRefresh();
   useEffect(() => { setDrawer(false); window.scrollTo(0, 0); }, [loc.pathname]);
   useEffect(() => {
     if (!drawer) return;
@@ -100,6 +103,13 @@ export function AppShell({ home }: { home: string }) {
       {/* Barra superior */}
       <header className="safe-x sticky top-0 z-20 box-content flex h-14 items-center gap-2 border-b border-line bg-paper/90 pt-[var(--safe-top)] backdrop-blur lg:pt-0">
         <button className="grid size-11 place-items-center rounded-md transition-colors hover:bg-sunken lg:hidden" onClick={() => setDrawer(true)} aria-label="Abrir menú" aria-expanded={drawer}><Menu className="size-5" /></button>
+        <button className="-ml-1 grid size-11 place-items-center rounded-md text-ink-2 transition-colors hover:bg-sunken hover:text-ink disabled:opacity-60 lg:ml-0"
+          onClick={refresh} disabled={spinning} aria-label={updateReady ? 'Instalar versión nueva' : 'Actualizar'} title={updateReady ? 'Hay una versión nueva: toque para instalarla' : 'Actualizar'}>
+          <span className="relative">
+            <RotateCw className={cx('size-[19px]', spinning && 'animate-spin [animation-duration:700ms]')} strokeWidth={2} />
+            {updateReady && <span className="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-brand ring-2 ring-paper" aria-hidden />}
+          </span>
+        </button>
         <div className="truncate text-[15px] font-semibold lg:hidden">{brand.name}</div>
         <div className="ml-auto flex items-center gap-1.5">
           <Slot name="shell.quick" props={{}} />

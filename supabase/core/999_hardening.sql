@@ -40,3 +40,27 @@ begin
     execute format('alter function %s set search_path = public, extensions', r.fn);
   end loop;
 end $$;
+
+-- App en vivo: los cambios de estas tablas llegan al instante a las pantallas abiertas.
+-- Realtime respeta RLS (cada quien recibe solo lo que puede ver). Se excluyen tablas
+-- con columnas ocultas (p. ej. costos de inventario): esas se refrescan por consulta.
+do $$
+declare t text;
+begin
+  if not exists (select 1 from pg_publication where pubname = 'supabase_realtime') then return; end if;
+  foreach t in array array[
+    'vehicles','vehicle_timeline','vehicle_models','vehicle_assignments','vehicle_meter_readings','vehicle_status_history',
+    'notifications','notification_reads','change_requests','employees','app_settings',
+    'inspections','inspection_results','inspection_templates','inspection_template_items',
+    'maintenance_records','maintenance_intervals','maintenance_types',
+    'work_orders','work_order_labor','work_order_parts','work_order_status_history','public_reports',
+    'inventory_reservations','purchase_requests','suppliers',
+    'operations','operation_employees','operation_vehicles','time_punches','time_punch_corrections',
+    'incidents','incident_status_history','fuel_logs','documents','gps_last_positions'] loop
+    continue when to_regclass('public.' || t) is null;
+    continue when exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = t);
+    continue when exists (select 1 from information_schema.columns c where c.table_schema = 'public' and c.table_name = t
+                            and not has_column_privilege('authenticated', format('public.%I', t), c.column_name, 'SELECT'));
+    execute format('alter publication supabase_realtime add table public.%I', t);
+  end loop;
+end $$;

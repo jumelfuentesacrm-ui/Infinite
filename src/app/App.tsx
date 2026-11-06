@@ -11,15 +11,14 @@ import { AppShell } from './AppShell';
 import { LoginPage } from './LoginPage';
 import { SetupNotice } from './SetupNotice';
 import { ShieldOff } from 'lucide-react';
-import { lazy } from 'react';
 
 const DEMO = import.meta.env.VITE_DEMO === '1';
 /** El visor del demo no admite rutas en la URL: navegación en memoria */
 const Router = DEMO ? MemoryRouter : BrowserRouter;
-const DemoBanner = DEMO ? lazy(() => import('../demo/DemoUI').then((m) => ({ default: m.DemoBanner }))) : null;
 
 const queryClient = new QueryClient({
-  defaultOptions: { queries: { staleTime: 20_000, retry: 1, refetchOnWindowFocus: true } },
+  // En vivo: Realtime avisa los cambios; además se revisa al volver a la app y cada minuto en pantalla.
+  defaultOptions: { queries: { staleTime: 5_000, retry: 1, refetchOnWindowFocus: 'always', refetchOnReconnect: 'always', refetchInterval: 60_000, refetchIntervalInBackground: false } },
 });
 
 export function App() {
@@ -30,7 +29,6 @@ export function App() {
         <ConfirmProvider>
           <AuthProvider>
             <Router>
-              {DemoBanner && <Suspense fallback={null}><DemoBanner /></Suspense>}
               <Gate />
             </Router>
           </AuthProvider>

@@ -24,8 +24,9 @@ export default defineConfig(({ mode }) => {
     react(),
     tailwindcss(),
     !demo && VitePWA({
-      registerType: 'autoUpdate',
-      includeAssets: ['icon.svg', 'favicon.ico', 'favicon-32.png', 'apple-touch-icon.png'],
+      // La versión nueva se instala al tocar el botón de actualizar (no recarga a mitad de un formulario)
+      registerType: 'prompt',
+      includeAssets: ['favicon.ico', 'favicon-32.png', 'apple-touch-icon.png'],
       manifest: {
         name: client.title ?? client.name,
         short_name: client.shortName,
