@@ -7,30 +7,44 @@ import { cx } from '@core/ui/primitives';
 
 /**
  * Reporte rápido en el taller — SIN PIN ni sesión.
- * Quien deja un ATV/UTV escribe el número de unidad y qué le pasó.
+ * Quien deja un ATV/UTV escoge el tipo, toca su número en la lista y dice qué le pasó.
  * El servidor valida la unidad, limita abusos y crea la orden de trabajo.
  */
+type Unit = { unit_number: string; label: string; vehicle_type: string };
+const ORDER = ['atv', 'utv'];
+const TYPE_LABEL: Record<string, string> = { atv: 'ATV', utv: 'UTV', truck: 'Camión', car: 'Auto', van: 'Van', equipment: 'Equipo', other: 'Otro' };
+
 export function PublicReport() {
   const [params] = useSearchParams();
   const [unit, setUnit] = useState((params.get('unidad') ?? '').toUpperCase());
   const [desc, setDesc] = useState('');
   const [name, setName] = useState('');
-  const [units, setUnits] = useState<{ unit_number: string; label: string }[]>([]);
+  const [units, setUnits] = useState<Unit[] | null>(null);
+  const [type, setType] = useState<string>('');
   const [state, setState] = useState<{ status: 'idle' | 'sending' | 'done' | 'error'; msg?: string; order?: string }>({ status: 'idle' });
   const descRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    rpc<{ unit_number: string; label: string }[]>('public_vehicle_units').then(setUnits).catch(() => setUnits([]));
+    rpc<Unit[]>('public_vehicle_units').then((list) => {
+      setUnits(list);
+      // Enlace con ?unidad=…: abre ya con su tipo escogido
+      const pre = list.find((u) => u.unit_number.toLowerCase() === unit.trim().toLowerCase());
+      if (pre) setType(pre.vehicle_type);
+    }).catch(() => setUnits([]));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const match = useMemo(() => units.find((u) => u.unit_number.toLowerCase() === unit.trim().toLowerCase()), [units, unit]);
-  const suggestions = useMemo(() => {
-    const q = unit.trim().toLowerCase();
-    if (!q || match) return [];
-    return units.filter((u) => u.unit_number.toLowerCase().includes(q)).slice(0, 6);
-  }, [units, unit, match]);
+  // Tipos que existen en la flota (ATV y UTV primero)
+  const types = useMemo(() => {
+    // ATV y UTV siempre; otros tipos solo si hay unidades
+    const present = [...new Set([...ORDER, ...(units ?? []).map((u) => u.vehicle_type)])];
+    return present.sort((a, b) => (ORDER.indexOf(a) + 99 * +(ORDER.indexOf(a) < 0)) - (ORDER.indexOf(b) + 99 * +(ORDER.indexOf(b) < 0)));
+  }, [units]);
+  const list = useMemo(() => (units ?? []).filter((u) => u.vehicle_type === type)
+    .sort((a, b) => a.unit_number.localeCompare(b.unit_number, 'es', { numeric: true })), [units, type]);
+  const match = (units ?? []).find((u) => u.unit_number === unit);
 
-  const valid = unit.trim().length > 0 && desc.trim().length >= 3;
+  const valid = !!match && desc.trim().length >= 3;
 
   async function send(e: React.FormEvent) {
     e.preventDefault();
@@ -45,7 +59,7 @@ export function PublicReport() {
   }
 
   function reset() {
-    setUnit(''); setDesc(''); setName(''); setState({ status: 'idle' });
+    setUnit(''); setType(''); setDesc(''); setName(''); setState({ status: 'idle' });
   }
 
   return (
@@ -81,23 +95,45 @@ export function PublicReport() {
               <p className="mt-1 text-sm text-muted">No necesita PIN. El mecánico recibe el aviso al instante.</p>
             </div>
 
-            <div>
-              <label htmlFor="unit" className="mb-1.5 block text-sm font-medium">Número de ATV / UTV <span className="text-bad">*</span></label>
-              <input id="unit" value={unit} onChange={(e) => setUnit(e.target.value.toUpperCase())} autoComplete="off" autoCapitalize="characters"
-                inputMode="text" placeholder="Ej. ATV-24" required aria-describedby="unit-help"
-                className="h-14 w-full rounded-lg border border-line-strong bg-panel px-4 font-mono text-xl font-semibold tracking-wide outline-none transition-shadow placeholder:font-sans placeholder:text-base placeholder:font-normal placeholder:tracking-normal placeholder:text-faint focus:border-brand focus:ring-4 focus:ring-brand/15" />
-              <p id="unit-help" className={cx('mt-1.5 min-h-5 text-[13px]', match ? 'text-ok' : 'text-muted')}>
-                {match ? `✓ ${match.label}` : 'Está en la placa o calcomanía de la unidad.'}
-              </p>
-              {suggestions.length > 0 && (
-                <div className="mt-1 flex flex-wrap gap-2" aria-label="Unidades parecidas">
-                  {suggestions.map((u) => (
-                    <button type="button" key={u.unit_number} onClick={() => { setUnit(u.unit_number); descRef.current?.focus(); }}
-                      className="tag-unit min-h-10 px-3 text-[15px] transition-colors hover:border-brand">{u.unit_number}</button>
+            <fieldset>
+              <legend className="mb-2 block text-sm font-medium">¿Qué es? <span className="text-bad">*</span></legend>
+              {units === null ? (
+                <div className="grid h-14 place-items-center text-muted"><Loader2 className="size-5 animate-spin" /></div>
+              ) : (
+                <div className={cx('grid gap-2', types.length === 2 ? 'grid-cols-2' : 'grid-cols-3')} role="radiogroup" aria-label="Tipo de unidad">
+                  {types.map((t) => (
+                    <button type="button" key={t} role="radio" aria-checked={type === t} onClick={() => { setType(t); if (match?.vehicle_type !== t) setUnit(''); }}
+                      className={cx('h-14 rounded-lg border text-[17px] font-semibold tracking-wide transition-[background-color,border-color,color,transform] duration-150 active:scale-[0.98]',
+                        type === t ? 'border-ink bg-ink text-white' : 'border-line-strong bg-panel text-ink hover:border-ink/40')}>
+                      {TYPE_LABEL[t] ?? t}
+                    </button>
                   ))}
                 </div>
               )}
-            </div>
+            </fieldset>
+
+            {type && (
+              <fieldset className="fade-in">
+                <legend className="mb-2 block text-sm font-medium">Número de {TYPE_LABEL[type] ?? 'unidad'} <span className="text-bad">*</span></legend>
+                {!list.length && <p className="rounded-lg border border-line bg-panel px-4 py-3 text-sm text-muted">No hay {TYPE_LABEL[type] ?? 'unidades'} registrados todavía.</p>}
+                <div className="grid grid-cols-3 gap-2 min-[400px]:grid-cols-4" role="radiogroup" aria-label="Número de unidad">
+                  {list.map((u) => {
+                    const on = u.unit_number === unit;
+                    return (
+                      <button type="button" key={u.unit_number} role="radio" aria-checked={on} title={u.label}
+                        onClick={() => { setUnit(u.unit_number); if (!desc) setTimeout(() => descRef.current?.focus({ preventScroll: false }), 50); }}
+                        className={cx('flex min-h-14 flex-col items-center justify-center rounded-lg border px-1.5 py-2 transition-[background-color,border-color,color,transform] duration-150 active:scale-[0.97]',
+                          on ? 'border-brand bg-brand text-white' : 'border-line-strong bg-panel text-ink hover:border-brand/60')}>
+                        <span className="max-w-full truncate font-mono text-[17px] font-semibold tracking-wide">{u.unit_number}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className={cx('mt-2 min-h-5 text-[13px]', match ? 'text-ink-2' : 'text-muted')}>
+                  {match ? <>Unidad <span className="font-mono font-semibold">{match.unit_number}</span> · {match.label}</> : 'Toque el número que tiene la unidad en la calcomanía.'}
+                </p>
+              </fieldset>
+            )}
 
             <div>
               <label htmlFor="desc" className="mb-1.5 block text-sm font-medium">Descripción del problema <span className="text-bad">*</span></label>

@@ -27,13 +27,20 @@ alter table public.public_reports enable row level security;
 revoke all on public.public_reports from anon, authenticated;
 
 -- Unidades activas para el selector del formulario público (solo número y modelo)
+-- Lista para escoger: tipo (ATV/UTV/…) y número. Solo lo necesario, sin datos internos.
+do $$ begin
+  if exists (select 1 from pg_proc where oid = to_regprocedure('public.public_vehicle_units()')
+              and pg_get_function_result(oid) not like '%vehicle_type%') then
+    execute 'drop function public.public_vehicle_units()';
+  end if;
+end $$;
 create or replace function public.public_vehicle_units()
-returns table (unit_number text, label text)
+returns table (unit_number text, label text, vehicle_type text)
 language sql stable security definer set search_path = public as $$
-  select v.unit_number, trim(m.manufacturer || ' ' || m.model)
+  select v.unit_number, trim(m.manufacturer || ' ' || m.model), m.vehicle_type
     from public.vehicles v join public.vehicle_models m on m.id = v.model_id
    where v.archived_at is null and v.status <> 'retired'
-   order by v.unit_number;
+   order by m.vehicle_type, v.unit_number;
 $$;
 comment on function public.public_vehicle_units() is '@public';
 
