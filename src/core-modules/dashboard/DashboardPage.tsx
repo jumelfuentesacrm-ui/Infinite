@@ -28,7 +28,7 @@ export default function DashboardPage() {
       {kpis.length > 0 && <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
         {kpis.map((w) => { const C = w.component; return <Suspense key={w.id} fallback={<div className="h-24 animate-pulse rounded-card bg-sunken" />}><C /></Suspense>; })}
       </div>}
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 [&>*]:min-w-0">
         {panels.map((w) => {
           const C = w.component;
           return <div key={w.id} className={cx(w.size === 'full' && 'lg:col-span-2')}><Suspense fallback={<Spinner />}><C /></Suspense></div>;

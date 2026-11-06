@@ -98,7 +98,7 @@ export function AppShell({ home }: { home: string }) {
       </aside>
 
       {/* Barra superior */}
-      <header className="sticky top-0 z-20 flex h-14 items-center gap-2 border-b border-line bg-paper/90 px-2 backdrop-blur sm:px-4 lg:px-6">
+      <header className="safe-x sticky top-0 z-20 box-content flex h-14 items-center gap-2 border-b border-line bg-paper/90 pt-[var(--safe-top)] backdrop-blur lg:pt-0">
         <button className="grid size-11 place-items-center rounded-md transition-colors hover:bg-sunken lg:hidden" onClick={() => setDrawer(true)} aria-label="Abrir menú" aria-expanded={drawer}><Menu className="size-5" /></button>
         <div className="truncate text-[15px] font-semibold lg:hidden">{brand.name}</div>
         <div className="ml-auto flex items-center gap-1.5">

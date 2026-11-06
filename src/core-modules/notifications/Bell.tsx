@@ -51,7 +51,7 @@ export function NotificationBell() {
         )}
       </button>
       {open && (
-        <div className="fixed inset-x-2 top-14 z-50 max-h-[70dvh] overflow-hidden rounded-xl border border-line bg-panel shadow-pop md:absolute md:inset-x-auto md:top-11 md:right-0 md:w-[380px]">
+        <div className="fixed inset-x-2 top-[calc(3.5rem+env(safe-area-inset-top))] z-50 max-h-[70dvh] overflow-hidden rounded-xl border border-line bg-panel shadow-pop md:absolute md:inset-x-auto md:top-11 md:right-0 md:w-[380px]">
           <div className="flex items-center justify-between border-b border-line px-3.5 py-2.5">
             <span className="text-sm font-semibold">Notificaciones</span>
             {unread.length > 0 && <button className="text-xs text-muted hover:text-ink" onClick={() => mark.mutate(unread.map((n) => n.id))}>Marcar todas leídas</button>}

@@ -30,7 +30,7 @@ export function DemoUsers({ onPick }: { onPick: (pin: string) => void }) {
 export function DemoBanner() {
   const [busy, setBusy] = useState(false);
   return (
-    <div className="flex h-[var(--demo-h)] items-center justify-center gap-3 overflow-hidden bg-brand px-4 text-[12px] font-medium text-white">
+    <div className="flex h-[var(--demo-h)] items-center justify-center gap-3 overflow-hidden bg-brand px-4 pt-[env(safe-area-inset-top)] text-[12px] font-medium text-white">
       <span className="truncate"><span className="sm:hidden">Demo · datos de ejemplo</span><span className="hidden sm:inline">Demo con datos de ejemplo. Lo que haga se guarda solo en este navegador.</span></span>
       <button disabled={busy} onClick={() => { setBusy(true); resetDemo(); }}
         className="inline-flex items-center gap-1 rounded border border-white/40 px-2 py-0.5 hover:bg-white/15">

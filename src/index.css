@@ -52,6 +52,8 @@
 
 @layer base {
   html { -webkit-text-size-adjust: 100%; }
+  /* Espacio de la hora/batería (notch, Dynamic Island). El demo lo pone en su barra. */
+  :root { --safe-top: env(safe-area-inset-top, 0px); }
   body {
     @apply bg-paper text-ink font-sans antialiased;
     font-feature-settings: 'tnum' 1, 'cv01' 1;
@@ -62,7 +64,7 @@
   button:not(:disabled), [role='button'], summary, label:has(input[type='checkbox']), select { cursor: pointer; }
   /* Sin retraso de toque ni zoom por doble toque en controles */
   a, button, input, select, textarea, label { touch-action: manipulation; }
-  html { -webkit-tap-highlight-color: transparent; scroll-padding-top: 4.5rem; }
+  html { -webkit-tap-highlight-color: transparent; scroll-padding-top: calc(4.5rem + env(safe-area-inset-top)); }
   ::selection { background: var(--color-brand-soft); }
 }
 
@@ -75,6 +77,10 @@
   .font-mono { font-variant-numeric: tabular-nums; }
   .hairline { border-color: var(--color-line); }
   .safe-bottom { padding-bottom: max(0.75rem, env(safe-area-inset-bottom)); }
+  /* Lados: notch en horizontal */
+  .safe-x { padding-left: max(0.5rem, env(safe-area-inset-left)); padding-right: max(0.5rem, env(safe-area-inset-right)); }
+  @media (min-width: 640px) { .safe-x { padding-left: max(1rem, env(safe-area-inset-left)); padding-right: max(1rem, env(safe-area-inset-right)); } }
+  @media (min-width: 1024px) { .safe-x { padding-left: 1.5rem; padding-right: 1.5rem; } }
   .scroll-x { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 }
 

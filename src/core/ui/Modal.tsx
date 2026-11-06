@@ -20,7 +20,7 @@ export function Modal({ open, onClose, title, children, footer, size = 'md' }: {
   return (
     <div className="backdrop-in fixed inset-0 z-50 flex items-end justify-center bg-ink/50 md:items-center md:p-6" onMouseDown={onClose}>
       <div ref={ref} role="dialog" aria-modal="true" onMouseDown={(e) => e.stopPropagation()}
-        aria-labelledby="modal-title" className={cx('sheet-in flex max-h-[92dvh] w-full flex-col rounded-t-2xl bg-panel shadow-pop md:rounded-xl',
+        aria-labelledby="modal-title" className={cx('sheet-in flex max-h-[calc(100dvh-env(safe-area-inset-top)-0.75rem)] w-full md:max-h-[92dvh] flex-col rounded-t-2xl bg-panel shadow-pop md:rounded-xl',
           size === 'sm' && 'md:max-w-md', size === 'md' && 'md:max-w-xl', size === 'lg' && 'md:max-w-3xl')}>
         <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-3">
           <h2 id="modal-title" className="text-base font-semibold">{title}</h2>

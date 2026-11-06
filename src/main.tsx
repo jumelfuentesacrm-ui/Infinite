@@ -19,7 +19,8 @@ const root = document.getElementById('root')!;
 const render = () => createRoot(root).render(<StrictMode><App /></StrictMode>);
 
 if (import.meta.env.VITE_DEMO === '1') {
-  document.documentElement.style.setProperty('--demo-h', '30px');
+  document.documentElement.style.setProperty('--demo-h', 'calc(30px + env(safe-area-inset-top, 0px))');
+  document.documentElement.style.setProperty('--safe-top', '0px');
   // Demo: arranca la base de datos en el navegador antes de mostrar la app
   root.innerHTML = `<div style="min-height:100dvh;display:grid;place-items:center;background:#15181C;color:#C2C6CC;font:500 14px 'IBM Plex Sans',system-ui,sans-serif;text-align:center;padding:24px">
     <div><div style="width:44px;height:44px;margin:0 auto 16px;border-radius:12px;background:${brand.primaryColor};display:grid;place-items:center;color:#fff;font:700 16px 'IBM Plex Sans Condensed','IBM Plex Sans',sans-serif">${brand.shortName.slice(0, 2).toUpperCase()}</div>

@@ -50,9 +50,11 @@ export function PublicReport() {
 
   return (
     <div className="min-h-dvh bg-paper">
-      <header className="border-b border-line bg-rail text-white">
+      <header className="border-b border-line bg-rail pt-[env(safe-area-inset-top)] text-white">
         <div className="mx-auto flex max-w-lg items-center gap-3 px-4 py-3.5">
-          <span className="grid size-9 place-items-center rounded-lg bg-brand font-mono text-sm font-bold">{brand.shortName.slice(0, 2).toUpperCase()}</span>
+          {brand.mark
+            ? <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-white p-1"><img src={brand.mark} alt="" className="size-full object-contain" /></span>
+            : <span className="grid size-9 place-items-center rounded-lg bg-brand font-mono text-sm font-bold">{brand.shortName.slice(0, 2).toUpperCase()}</span>}
           <div className="min-w-0">
             <div className="truncate text-[15px] font-semibold leading-tight">{brand.name}</div>
             <div className="text-xs text-rail-text">Reporte en el taller</div>
