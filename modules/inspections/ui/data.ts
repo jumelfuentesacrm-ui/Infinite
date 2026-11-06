@@ -9,7 +9,7 @@ export const RESULT: StatusMap = {
   fail: { label: 'No apto', tone: 'bad' },
 };
 export const ITEM_RESULT: StatusMap = {
-  ok: { label: 'Conforme', tone: 'ok' }, fail: { label: 'No conforme', tone: 'bad' }, na: { label: 'No aplica', tone: 'idle' },
+  ok: { label: 'Bien', tone: 'ok' }, fail: { label: 'Mal', tone: 'bad' }, rating: { label: 'Nota', tone: 'idle' }, na: { label: 'No aplica', tone: 'idle' },
 };
 export const FUEL_LEVELS = [
   { value: 'empty', label: 'Vacío' }, { value: 'quarter', label: '1/4' }, { value: 'half', label: '1/2' },

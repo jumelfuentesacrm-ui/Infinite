@@ -85,10 +85,19 @@ select public.submit_inspection(
   public.inspection_template_for((select id from vehicles where unit_number='UTV-01')),
   (select jsonb_agg(jsonb_build_object('item_id', i.id, 'result', case when i.label='Frenos' then 'fail' else 'ok' end,
           'comment', case when i.label='Frenos' then 'Pedal esponjoso' end))
-     from inspection_template_items i where i.template_id = public.inspection_template_for((select id from vehicles where unit_number='UTV-01'))),
+     from inspection_template_items i where i.archived_at is null and i.template_id = public.inspection_template_for((select id from vehicles where unit_number='UTV-01'))),
   'Revisar frenos', 120.5, null, 'half') ->> 'result' as inspection_result;
 select pg_temp.expect_error($$select public.submit_inspection((select id from vehicles limit 1),
   public.inspection_template_for((select id from vehicles limit 1)), '[{"item_id":"00000000-0000-0000-0000-000000000000","result":"ok"}]')$$, 'Faltan');
+-- Pulgar abajo exige detalles; la nota exige 1–10
+select pg_temp.expect_error($$select public.submit_inspection((select id from vehicles where unit_number='UTV-01'),
+  public.inspection_template_for((select id from vehicles where unit_number='UTV-01')),
+  (select jsonb_agg(jsonb_build_object('item_id', i.id, 'result', case when i.label='Frenos' then 'fail' else 'ok' end))
+     from inspection_template_items i where i.archived_at is null and i.template_id = public.inspection_template_for((select id from vehicles where unit_number='UTV-01'))))$$, 'Describa');
+select pg_temp.expect_error($$select public.submit_inspection((select id from vehicles where unit_number='UTV-01'),
+  public.inspection_template_for((select id from vehicles where unit_number='UTV-01')),
+  (select jsonb_agg(jsonb_build_object('item_id', i.id, 'result', case when i.label='Suspensión' then 'rating' else 'ok' end, 'score', 11))
+     from inspection_template_items i where i.archived_at is null and i.template_id = public.inspection_template_for((select id from vehicles where unit_number='UTV-01'))))$$, '1 al 10');
 reset role;
 do $$ begin
   assert (select status from vehicles where unit_number='UTV-01') = 'out_of_service', 'vehículo debe quedar fuera de servicio';

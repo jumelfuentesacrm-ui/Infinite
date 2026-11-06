@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Check, X, Minus, AlertOctagon, Send } from 'lucide-react';
+import { ThumbsUp, ThumbsDown, AlertOctagon, Send } from 'lucide-react';
 import { rpc, useAction } from '@core/data/api';
 import { attachFile } from '@core/data/storage';
 import { fleetKeys, useMyVehicle, useVehicle, modelLabel } from '@core/data/shared';
@@ -8,13 +8,14 @@ import { useAuth } from '@core/auth/AuthProvider';
 import { getPosition } from '@core/lib/geo';
 import { fmtNum } from '@core/lib/format';
 import { Button, Card, EmptyState, PageHeader, Spinner, cx } from '@core/ui/primitives';
-import { Checkbox, Field, FormGrid, Input, Select, Textarea } from '@core/ui/form';
+import { Checkbox, Field, FormGrid, Input, Textarea } from '@core/ui/form';
 import { VehicleSelect } from '@core/ui/pickers';
 import { FilePicker } from '@core/ui/media';
 import { useData } from '@core/data/api';
-import { FUEL_LEVELS, keys, MODULE, useTemplateItems, type TemplateItem } from './data';
+import { keys, MODULE, useTemplateItems, type TemplateItem } from './data';
 
-type Answer = { result?: 'ok' | 'fail' | 'na'; comment: string; photos: File[] };
+type Answer = { result?: 'ok' | 'fail' | 'rating'; score?: number; comment: string; photos: File[] };
+const SCORES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
 export default function InspectionForm() {
   const [params] = useSearchParams();
@@ -43,7 +44,6 @@ function InspectionBody({ vehicleId }: { vehicleId: string }) {
   const [answers, setAnswers] = useState<Record<string, Answer>>({});
   const [hours, setHours] = useState('');
   const [miles, setMiles] = useState('');
-  const [fuel, setFuel] = useState('');
   const [notes, setNotes] = useState('');
   const [unfit, setUnfit] = useState(false);
   const [photos, setPhotos] = useState<File[]>([]);
@@ -54,24 +54,25 @@ function InspectionBody({ vehicleId }: { vehicleId: string }) {
     return [...g.entries()];
   }, [items.data]);
   const total = items.data?.length ?? 0;
-  const done = Object.values(answers).filter((a) => a.result).length;
+  const answered = (a?: Answer) => !!a?.result && (a.result !== 'rating' || !!a.score);
+  const done = (items.data ?? []).filter((i) => answered(answers[i.id])).length;
   const fails = (items.data ?? []).filter((i) => answers[i.id]?.result === 'fail');
   const criticalFail = fails.some((i) => i.is_critical);
   const set = (id: string, patch: Partial<Answer>) => setAnswers((a) => ({ ...a, [id]: { ...(a[id] ?? { comment: '', photos: [] }), ...patch } }));
 
   const submit = useAction(async () => {
     const list = items.data ?? [];
-    const missing = list.filter((i) => !answers[i.id]?.result);
+    const missing = list.filter((i) => !answered(answers[i.id]));
     if (missing.length) throw new Error(`Faltan ${missing.length} punto(s): ${missing.slice(0, 3).map((i) => i.label).join(', ')}…`);
     const noPhoto = list.find((i) => answers[i.id].result === 'fail' && i.photo_required_on_fail && !answers[i.id].photos.length);
     if (noPhoto) throw new Error(`"${noPhoto.label}" requiere foto cuando no es conforme`);
     const noComment = list.find((i) => answers[i.id].result === 'fail' && !answers[i.id].comment.trim());
-    if (noComment) throw new Error(`Describa el problema en "${noComment.label}"`);
+    if (noComment) throw new Error(`Escriba los detalles en "${noComment.label}"`);
     const pos = await getPosition(6000);
     const res = await rpc<{ id: string; result: string; results: Record<string, string> }>('submit_inspection', {
       p_vehicle: vehicleId, p_template: tpl.data, p_notes: notes || null,
-      p_results: list.map((i) => ({ item_id: i.id, result: answers[i.id].result, comment: answers[i.id].comment || null })),
-      p_engine_hours: hours ? Number(hours) : null, p_mileage: miles ? Number(miles) : null, p_fuel_level: fuel || null,
+      p_results: list.map((i) => ({ item_id: i.id, result: answers[i.id].result, score: answers[i.id].result === 'rating' ? answers[i.id].score : null, comment: answers[i.id].comment.trim() || null })),
+      p_engine_hours: hours ? Number(hours) : null, p_mileage: miles ? Number(miles) : null, p_fuel_level: null,
       p_mark_unfit: unfit, p_lat: pos?.lat ?? null, p_lng: pos?.lng ?? null,
     });
     // Fotos: la inspección ya quedó guardada; las fotos se adjuntan a cada punto
@@ -89,10 +90,10 @@ function InspectionBody({ vehicleId }: { vehicleId: string }) {
 
   return (
     <div className="space-y-4 pb-24">
-      <Card className="flex items-center justify-between">
-        <div>
-          <div className="font-mono text-lg font-semibold">{v.unit_number}</div>
-          <div className="text-sm text-muted">{modelLabel(v.vehicle_models)}</div>
+      <Card className="flex items-center justify-between gap-3">
+        <div className="flex min-w-0 items-baseline gap-2.5">
+          <span className="shrink-0 font-mono text-xl font-semibold">{v.unit_number}</span>
+          <span className="truncate text-sm text-muted">{modelLabel(v.vehicle_models)}</span>
         </div>
         <div className="text-right"><div className="num text-xl font-semibold">{done}/{total}</div><div className="text-xs text-muted">puntos</div></div>
       </Card>
@@ -111,14 +112,31 @@ function InspectionBody({ vehicleId }: { vehicleId: string }) {
                       {i.help_text && <div className="text-xs text-muted">{i.help_text}</div>}
                     </div>
                     <div className="flex shrink-0 gap-1.5">
-                      <Choice active={a?.result === 'ok'} tone="ok" onClick={() => set(i.id, { result: 'ok' })} label="Conforme"><Check className="size-5" /></Choice>
-                      <Choice active={a?.result === 'fail'} tone="bad" onClick={() => set(i.id, { result: 'fail' })} label="No conforme"><X className="size-5" /></Choice>
-                      <Choice active={a?.result === 'na'} tone="idle" onClick={() => set(i.id, { result: 'na' })} label="No aplica"><Minus className="size-5" /></Choice>
+                      <Choice active={a?.result === 'ok'} tone="ok" onClick={() => set(i.id, { result: 'ok' })} label="Bien"><ThumbsUp className="size-5" /></Choice>
+                      <Choice active={a?.result === 'fail'} tone="bad" onClick={() => set(i.id, { result: 'fail' })} label="Mal"><ThumbsDown className="size-5" /></Choice>
+                      <Choice active={a?.result === 'rating'} tone="idle" onClick={() => set(i.id, { result: 'rating' })} label="Nota del 1 al 10">
+                        <span className="num text-[13px] font-semibold">{a?.result === 'rating' && a.score ? a.score : '1–10'}</span>
+                      </Choice>
                     </div>
                   </div>
+                  {a?.result === 'rating' && (
+                    <div className="mt-3">
+                      <div className="mb-1.5 text-xs text-muted">Nota del 1 (muy mal) al 10 (excelente)</div>
+                      <div className="grid grid-cols-10 gap-1" role="radiogroup" aria-label={`Nota para ${i.label}`}>
+                        {SCORES.map((n) => (
+                          <button key={n} type="button" role="radio" aria-checked={a.score === n} onClick={() => set(i.id, { score: n })}
+                            className={cx('num h-10 touch-manipulation rounded-md border text-sm font-medium transition-colors',
+                              a.score === n ? 'border-ink bg-ink text-white' : 'border-line bg-panel text-ink-2 hover:border-line-strong')}>{n}</button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   {a?.result === 'fail' && (
                     <div className="mt-3 space-y-2">
-                      <Textarea rows={2} placeholder="Describa el problema" value={a.comment} onChange={(e) => set(i.id, { comment: e.target.value })} />
+                      <Field label="Detalles" required>
+                        <Textarea rows={2} placeholder="¿Qué tiene? Describa el problema" value={a.comment} onChange={(e) => set(i.id, { comment: e.target.value })}
+                          className={cx(!a.comment.trim() && 'border-bad/50')} />
+                      </Field>
                       <FilePicker files={a.photos} onChange={(f) => set(i.id, { photos: f })} max={4} />
                     </div>
                   )}
@@ -134,10 +152,9 @@ function InspectionBody({ vehicleId }: { vehicleId: string }) {
       ))}
 
       <Card className="space-y-4">
-        <FormGrid cols={3}>
+        <FormGrid cols={2}>
           {v.vehicle_models?.uses_engine_hours && <Field label="Horas de motor" hint={`Última: ${fmtNum(v.engine_hours)} h`}><Input type="number" inputMode="decimal" step="0.1" value={hours} onChange={(e) => setHours(e.target.value)} /></Field>}
           {v.vehicle_models?.uses_mileage && <Field label="Millaje" hint={`Último: ${fmtNum(v.mileage)}`}><Input type="number" inputMode="decimal" step="0.1" value={miles} onChange={(e) => setMiles(e.target.value)} /></Field>}
-          <Field label="Combustible"><Select value={fuel} onChange={(e) => setFuel(e.target.value)} placeholder="—" options={FUEL_LEVELS} /></Field>
         </FormGrid>
         <Field label="Observaciones"><Textarea value={notes} onChange={(e) => setNotes(e.target.value)} /></Field>
         <Field label="Fotos generales"><FilePicker files={photos} onChange={setPhotos} /></Field>
@@ -149,7 +166,7 @@ function InspectionBody({ vehicleId }: { vehicleId: string }) {
 
       <div className="safe-bottom fixed inset-x-0 bottom-0 z-30 border-t border-line bg-panel/95 px-4 pt-3 backdrop-blur md:static md:border-0 md:bg-transparent md:p-0">
         <Button variant="primary" size="lg" block icon={Send} loading={submit.isPending} disabled={done < total} onClick={() => submit.mutate()}>
-          {done < total ? `Faltan ${total - done} puntos` : fails.length ? `Enviar (${fails.length} no conforme)` : 'Enviar inspección'}
+          {done < total ? `Faltan ${total - done} puntos` : fails.length ? `Enviar (${fails.length} con pulgar abajo)` : 'Enviar inspección'}
         </Button>
       </div>
     </div>
@@ -160,7 +177,7 @@ function Choice({ active, tone, onClick, label, children }: { active?: boolean; 
   const on = { ok: 'bg-ok text-white border-ok', bad: 'bg-bad text-white border-bad', idle: 'bg-idle text-white border-idle' }[tone];
   return (
     <button type="button" onClick={onClick} aria-label={label} aria-pressed={active} title={label}
-      className={cx('grid size-11 place-items-center rounded-lg border-2 transition-colors', active ? on : 'border-line text-faint hover:border-line-strong')}>
+      className={cx('grid h-11 min-w-11 touch-manipulation place-items-center rounded-lg border-2 px-1.5 transition-colors', active ? on : 'border-line text-faint hover:border-line-strong')}>
       {children}
     </button>
   );

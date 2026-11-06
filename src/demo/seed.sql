@@ -117,14 +117,14 @@ select demo.as_user('CH01');
 select public.submit_inspection(v.id, public.inspection_template_for(v.id),
   (select jsonb_agg(jsonb_build_object('item_id', i.id, 'result', case when i.label = 'Frenos' then 'fail' else 'ok' end,
      'comment', case when i.label = 'Frenos' then 'El pedal se siente esponjoso y frena tarde' end))
-     from inspection_template_items i where i.template_id = public.inspection_template_for(v.id)),
+     from inspection_template_items i where i.archived_at is null and i.template_id = public.inspection_template_for(v.id)),
   'Revisar frenos antes de salir', 1182.5, null, 'half')
   from vehicles v where v.unit_number = 'UTV-01';
 select demo.as_user('CH02');
 select public.submit_inspection(v.id, public.inspection_template_for(v.id),
-  (select jsonb_agg(jsonb_build_object('item_id', i.id, 'result', case when i.label = 'Espejos' then 'fail' else 'ok' end,
-     'comment', case when i.label = 'Espejos' then 'Espejo izquierdo flojo' end))
-     from inspection_template_items i where i.template_id = public.inspection_template_for(v.id)),
+  (select jsonb_agg(jsonb_build_object('item_id', i.id, 'result', case when i.label = 'Daños visibles' then 'fail' when i.label = 'Condición general' then 'rating' else 'ok' end, 'score', case when i.label = 'Condición general' then 8 end,
+     'comment', case when i.label = 'Daños visibles' then 'Guardafango izquierdo rajado' end))
+     from inspection_template_items i where i.archived_at is null and i.template_id = public.inspection_template_for(v.id)),
   null, 213.4, 1311, 'three_quarters')
   from vehicles v where v.unit_number = 'ATV-24A';
 select demo.as_user('SUP1');
@@ -165,7 +165,7 @@ select demo.as_user('SUP1');
 select public.create_work_order(jsonb_build_object('vehicle_id', (select id from vehicles where unit_number = 'ATV-18A'),
   'reported_problem', 'No enciende en frío, falla al arrancar', 'priority', 'critical'));
 select public.create_work_order(jsonb_build_object('vehicle_id', (select id from vehicles where unit_number = 'ATV-24A'),
-  'reported_problem', 'Espejo izquierdo flojo (inspección)', 'priority', 'low', 'source_type', 'inspection'));
+  'reported_problem', 'Guardafango izquierdo rajado (inspección)', 'priority', 'low', 'source_type', 'inspection'));
 select demo.as_user('MEC2');
 select public.diagnose_work_order((select id from work_orders where reported_problem like 'No enciende%'), 'Bujía deteriorada. No hay existencia en inventario.');
 select public.add_work_order_part((select id from work_orders where reported_problem like 'No enciende%'),
