@@ -2,7 +2,7 @@
 -- INSPECCIONES · Pulgar arriba / pulgar abajo / nota 1–10
 --  ok      👍 conforme
 --  fail    👎 no conforme (los detalles son obligatorios)
---  rating  nota del 1 al 10 (reemplaza "no aplica")
+--  rating  nota del 1 al 10 (reemplaza "no aplica"); 4 o menos = observación
 -- Plantilla base: Seguridad solo lleva Frenos; sin "Nivel de combustible".
 -- =============================================================================
 alter table public.inspection_results add column if not exists score int check (score between 1 and 10);
@@ -81,7 +81,9 @@ begin
     v_map := v_map || jsonb_build_object(v_item.id::text, v_rid);
   end loop;
 
-  select count(*) filter (where result = 'fail'), count(*) filter (where result = 'fail' and is_critical)
+  -- Nota baja (4 o menos) cuenta como observación: avisa al supervisor
+  select count(*) filter (where result = 'fail' or (result = 'rating' and score <= 4)),
+         count(*) filter (where result = 'fail' and is_critical)
     into v_fail, v_crit from public.inspection_results where inspection_id = v_id;
   v_result := case when v_crit > 0 or p_mark_unfit then 'fail' when v_fail > 0 then 'pass_with_issues' else 'pass' end;
   update public.inspections set result = v_result, marked_unfit = (v_crit > 0 or coalesce(p_mark_unfit,false))
@@ -104,7 +106,7 @@ begin
       'critical', 'inspection', v_id);
   elsif v_result = 'pass_with_issues' then
     perform app.notify(array['admin','supervisor'], 'inspections', 'vehicle_issues',
-      'Vehículo ' || v_unit || ' con observaciones', v_fail || ' punto(s) no conforme(s).',
+      'Vehículo ' || v_unit || ' con observaciones', v_fail || ' punto(s) con pulgar abajo o nota baja.',
       '/inspecciones/' || v_id, 'warning', 'inspection', v_id);
   end if;
 

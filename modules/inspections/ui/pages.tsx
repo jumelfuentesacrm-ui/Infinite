@@ -7,7 +7,7 @@ import { useAttachments, VEHICLE_STATUS } from '@core/data/shared';
 import { useLiveTable } from '@core/data/realtime';
 import { Can, useAuth, useWho } from '@core/auth/AuthProvider';
 import { Slot } from '@core/modules/Slot';
-import { Badge, Button, Card, EmptyState, KeyValue, LinkButton, PageHeader, QueryView, Section, StatusBadge, Tabs, UnitTag } from '@core/ui/primitives';
+import { Badge, Button, Card, EmptyState, KeyValue, LinkButton, PageHeader, QueryView, Section, StatusBadge, Tabs, UnitTag, cx } from '@core/ui/primitives';
 import { DataTable, type Column } from '@core/ui/DataTable';
 import { Field, Textarea } from '@core/ui/form';
 import { AttachmentGrid } from '@core/ui/media';
@@ -88,8 +88,8 @@ export function InspectionDetail() {
   return (
     <QueryView q={q}>
       {({ ins, results }) => {
-        const fails = results.filter((r) => r.result === 'fail');
-        const summary = `Inspección ${fmtDateTime(ins.completed_at)}: ` + (fails.map((r) => `${r.label}${r.comment ? ` (${r.comment})` : ''}`).join('; ') || 'sin fallas');
+        const fails = results.filter((r) => r.result === 'fail' || (r.result === 'rating' && r.score <= 4));
+        const summary = `Inspección ${fmtDateTime(ins.completed_at)}: ` + (fails.map((r) => `${r.label}${r.result === 'rating' ? ` (nota ${r.score}/10)` : ''}${r.comment ? ` (${r.comment})` : ''}`).join('; ') || 'sin fallas');
         return (
           <div className="mx-auto max-w-4xl">
             <PageHeader back="/inspecciones" eyebrow={`Inspección · ${fmtDateTime(ins.completed_at)}`}
@@ -98,14 +98,14 @@ export function InspectionDetail() {
               actions={fails.length > 0 && <Slot name="inspection.actions" props={{ inspectionId: id, vehicleId: ins.vehicle_id, summary }} />} />
             <div className="grid gap-4 md:grid-cols-3">
               <div className="space-y-4 md:col-span-2">
-                <Section title={`Puntos evaluados · ${fails.length} con pulgar abajo`}>
+                <Section title={`Puntos evaluados · ${fails.length} con problema`}>
                   <ul className="-my-2 divide-y divide-line">
                     {[...fails, ...results.filter((r) => r.result !== 'fail')].map((r) => (
                       <li key={r.id} className="py-2.5">
                         <div className="flex items-center justify-between gap-3">
                           <span className="font-medium">{r.label}{r.is_critical && <span className="ml-1.5 text-[10px] font-semibold uppercase text-bad">crítico</span>}</span>
                           {r.result === 'rating'
-                            ? <span className="num rounded-full border border-line px-2.5 py-0.5 text-[13px] font-semibold">{r.score}<span className="font-normal text-muted">/10</span></span>
+                            ? <span className={cx('num rounded-full border px-2.5 py-0.5 text-[13px] font-semibold', r.score <= 4 ? 'border-bad/40 bg-bad-soft text-bad' : 'border-line')}>{r.score}<span className="font-normal text-muted">/10</span></span>
                             : <span className="flex items-center gap-1.5">{r.result === 'ok' ? <ThumbsUp className="size-4 text-ok" /> : r.result === 'fail' ? <ThumbsDown className="size-4 text-bad" /> : null}<StatusBadge map={ITEM_RESULT} value={r.result} /></span>}
                         </div>
                         {r.comment && <p className="mt-1 text-sm text-ink-2">{r.comment}</p>}

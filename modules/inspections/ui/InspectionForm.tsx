@@ -129,6 +129,7 @@ function InspectionBody({ vehicleId }: { vehicleId: string }) {
                               a.score === n ? 'border-ink bg-ink text-white' : 'border-line bg-panel text-ink-2 hover:border-line-strong')}>{n}</button>
                         ))}
                       </div>
+                      {!!a.score && a.score <= 4 && <p className="mt-1.5 text-xs text-bad">Nota baja: la inspección quedará con observaciones y se avisará al supervisor.</p>}
                     </div>
                   )}
                   {a?.result === 'fail' && (

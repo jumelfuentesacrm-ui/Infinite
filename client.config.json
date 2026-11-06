@@ -1,12 +1,15 @@
 {
   "client": {
     "name": "Control de Flota",
-    "shortName": "Flota",
-    "company": "Mi Compañía",
+    "shortName": "Flotas",
+    "company": "Carabalí Rainforest Park",
     "primaryColor": "#E8590C",
     "locale": "es-PR",
     "currency": "USD",
-    "timezone": "America/Puerto_Rico"
+    "timezone": "America/Puerto_Rico",
+    "title": "Carabalí Flotas",
+    "logo": "/brand/logo.png",
+    "mark": "/brand/mark.png"
   },
   "modules": {
     "accidents": false,

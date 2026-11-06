@@ -25,9 +25,9 @@ export default defineConfig(({ mode }) => {
     tailwindcss(),
     !demo && VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['icon.svg'],
+      includeAssets: ['favicon.ico', 'favicon-32.png', 'apple-touch-icon.png'],
       manifest: {
-        name: client.name,
+        name: client.title ?? client.name,
         short_name: client.shortName,
         lang: 'es',
         start_url: '/',
@@ -35,9 +35,9 @@ export default defineConfig(({ mode }) => {
         background_color: '#F4F3EF',
         theme_color: '#15181C',
         icons: [
-          { src: '/icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
-          { src: '/icon-192.png', sizes: '192x192', type: 'image/png' },
-          { src: '/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
+          { src: '/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+          { src: '/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+          { src: '/icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
         ],
       },
       workbox: {

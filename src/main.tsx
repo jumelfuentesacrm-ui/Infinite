@@ -13,7 +13,7 @@ import { brand } from '@core/config';
 import { App } from '@app/App';
 
 document.documentElement.style.setProperty('--brand', brand.primaryColor);
-document.title = brand.name;
+document.title = brand.title ?? brand.name;
 
 const root = document.getElementById('root')!;
 const render = () => createRoot(root).render(<StrictMode><App /></StrictMode>);

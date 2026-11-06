@@ -85,7 +85,9 @@ export function AppShell({ home }: { home: string }) {
       {/* Barra lateral (escritorio) */}
       <aside className="fixed top-[var(--demo-h,0px)] bottom-0 left-0 z-30 hidden w-[240px] flex-col bg-rail lg:flex">
         <div className="flex h-14 items-center gap-2.5 px-4">
-          <div className="grid size-8 place-items-center rounded-md bg-brand font-mono text-xs font-bold text-white">{brand.shortName.slice(0, 2).toUpperCase()}</div>
+          {brand.mark
+            ? <div className="grid size-8 shrink-0 place-items-center rounded-md bg-white p-1"><img src={brand.mark} alt="" className="size-full object-contain" /></div>
+            : <div className="grid size-8 place-items-center rounded-md bg-brand font-mono text-xs font-bold text-white">{brand.shortName.slice(0, 2).toUpperCase()}</div>}
           <div className="min-w-0">
             <div className="truncate text-sm font-semibold text-white">{brand.name}</div>
             <div className="truncate text-[11px] text-rail-text">{brand.company}</div>

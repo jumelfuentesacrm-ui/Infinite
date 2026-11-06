@@ -55,14 +55,15 @@ export function LoginPage() {
 
   return (
     <div className="login-bg flex min-h-dvh flex-col text-ink">
-      <main className="flex flex-1 flex-col items-center justify-center px-6 pt-[max(2.5rem,env(safe-area-inset-top))] pb-8">
+      <main className="flex flex-1 flex-col items-center justify-center px-6 pt-[max(1.5rem,env(safe-area-inset-top))] pb-6">
         <div className="fade-in w-full max-w-[320px]">
           <header className="text-center">
+            {brand.logo && <img src={brand.logo} alt={brand.company} width={150} height={58} className="mx-auto mb-4 h-auto w-[150px] select-none" draggable={false} />}
             <p className="text-[13px] font-medium uppercase tracking-[0.2em] text-muted">{brand.company}</p>
             <h1 className="mt-2 text-[26px] font-semibold tracking-tight">{brand.name}</h1>
           </header>
 
-          <section className="mt-10" aria-label="Ingreso con PIN">
+          <section className={cx(brand.logo ? 'mt-6' : 'mt-10')} aria-label="Ingreso con PIN">
             <p className="text-center text-[15px] text-ink-2">Ingrese su PIN</p>
 
             <div key={shake} className={cx('mt-5 flex h-6 items-center justify-center gap-3.5', shake > 0 && 'pin-shake')}
